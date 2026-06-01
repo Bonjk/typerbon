@@ -92,7 +92,7 @@ function switchTab(name) {
 // ── ARTICLE LIST ──────────────────────────────────────────
 async function renderArticleList() {
   const container = $("article-list");
-  container.innerHTML = `<div class="loading-state">⏳ 載入文章中…</div>`;
+  container.innerHTML = `<div class="loading-state">載入文章中...</div>`;
   $("article-selector").style.display = "block";
 
   const articles = await ArticleStore.getAll();
@@ -235,7 +235,7 @@ async function finishSession(typed) {
 
   // Save to Firestore (non-blocking)
   RecordStore.addSession(state.studentId, session)
-    .catch(() => showToast("⚠️ 成績儲存失敗，請檢查網路連線"));
+    .catch(() => showToast("成績儲存失敗，請檢查網路連線"));
 
   showResults(session);
 }
@@ -244,10 +244,10 @@ function showResults(session) {
   $("typing-area").style.display = "none";
   $("result-card").style.display = "block";
 
-  const emoji = session.score >= 6000 ? "🏆"
-    : session.score >= 3000 ? "🎉"
-    : session.score >= 1000 ? "👍" : "💪";
-  $("result-emoji").textContent = emoji;
+  const grade = session.score >= 6000 ? "優秀"
+    : session.score >= 3000 ? "不錯"
+    : session.score >= 1000 ? "繼續加油" : "多加練習";
+  $("result-emoji").textContent = grade;
   $("res-score").textContent = session.score;
   $("res-wpm").textContent   = session.wpm + " WPM";
   $("res-acc").textContent   = session.accuracy + "%";
@@ -293,12 +293,12 @@ async function renderHistory() {
   const summary = $("history-summary");
   const list    = $("history-list");
   summary.innerHTML = "";
-  list.innerHTML = `<div class="loading-state">⏳ 載入中…</div>`;
+  list.innerHTML = `<div class="loading-state">載入中...</div>`;
 
   const records = await RecordStore.getByStudent(state.studentId);
 
   if (!records.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>目前還沒有練習紀錄，快去練習吧！</div>`;
+    list.innerHTML = `<div class="empty-state">目前還沒有練習紀錄，快去練習吧！</div>`;
     return;
   }
 
@@ -334,7 +334,7 @@ function setLbMode(mode) {
 
 async function renderLeaderboard() {
   const el = $("leaderboard-list");
-  el.innerHTML = `<div class="loading-state">⏳ 載入排行榜…</div>`;
+  el.innerHTML = `<div class="loading-state">載入排行榜...</div>`;
 
   const classCode = (state.leaderboardMode === "class" && state.studentId)
     ? state.studentId.slice(0, 3) : null;
@@ -345,11 +345,11 @@ async function renderLeaderboard() {
     : all;
 
   if (!rows.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏁</div>同班還沒有人完成練習，成為第一名吧！</div>`;
+    el.innerHTML = `<div class="empty-state">同班還沒有人完成練習，成為第一名吧！</div>`;
     return;
   }
 
-  const medals = ["🥇","🥈","🥉"];
+  const medals = ["1st","2nd","3rd"];
   el.innerHTML = `
     <div class="lb-header">
       <span class="lb-rank">名次</span>

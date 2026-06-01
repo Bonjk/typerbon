@@ -590,14 +590,31 @@ body {
 }
 .panel-header .section-title { margin-bottom: 0; }
 
-.teacher-article-list { display: flex; flex-direction: column; gap: 8px; }
+.teacher-article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
 
 .ta-row {
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
-  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.lb-row-clickable { cursor: pointer; }
+.lb-row-clickable:hover { background: rgba(245,200,66,.05); }
+
+.records-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 10px;
 }
 .ta-row-title { flex: 1; font-size: 0.92rem; }
 .ta-row-meta  { font-size: 0.75rem; color: var(--text-muted); }

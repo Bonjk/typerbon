@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TyperBon｜英文打字練習</title>
+  <title>TyperBon | 英文打字練習</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -15,7 +15,7 @@
 <div id="screen-login" class="screen active">
   <div class="login-bg"><div class="grid-lines"></div></div>
   <div class="login-card">
-    <div class="logo-mark">⌨</div>
+    <div class="logo-mark">T</div>
     <h1 class="logo-title">TyperBon</h1>
     <p class="logo-sub">英文打字練習平台</p>
     <div class="input-group">
@@ -34,7 +34,7 @@
 <div id="screen-app" class="screen">
 
   <nav class="navbar">
-    <div class="nav-logo">⌨ TyperBon</div>
+    <div class="nav-logo">TyperBon</div>
     <div class="nav-info">
       <span class="nav-student-id" id="nav-student-id"></span>
       <button class="btn-logout" id="btn-logout">登出</button>
@@ -42,9 +42,9 @@
   </nav>
 
   <div class="tab-bar">
-    <button class="tab active" data-tab="practice">📝 練習</button>
-    <button class="tab" data-tab="history">📊 我的成績</button>
-    <button class="tab" data-tab="leaderboard">🏆 排行榜</button>
+    <button class="tab active" data-tab="practice">練習</button>
+    <button class="tab" data-tab="history">我的成績</button>
+    <button class="tab" data-tab="leaderboard">排行榜</button>
   </div>
 
   <!-- ── TAB: PRACTICE ── -->
@@ -52,7 +52,7 @@
     <div class="section-card article-selector" id="article-selector">
       <h2 class="section-title">選擇文章</h2>
       <div id="article-list" class="article-list">
-        <div class="loading-state">⏳ 載入文章中…</div>
+        <div class="loading-state">載入文章中...</div>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
         placeholder="點此開始輸入……"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       <div class="typing-actions">
-        <button class="btn-secondary" id="btn-restart">↺ 重新開始</button>
+        <button class="btn-secondary" id="btn-restart">重新開始</button>
         <button class="btn-danger" id="btn-cancel">取消</button>
       </div>
     </div>
@@ -128,14 +128,14 @@
   <div id="tab-leaderboard" class="tab-content">
     <div class="section-card">
       <div class="lb-section-header">
-        <h2 class="section-title" style="margin:0">🏆 排行榜 <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">（每人最高分）</span></h2>
+        <h2 class="section-title" style="margin:0">排行榜 <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">（每人最高分）</span></h2>
         <div class="lb-toggle">
           <button class="lb-toggle-btn active" id="btn-lb-class">同班</button>
           <button class="lb-toggle-btn" id="btn-lb-all">全體</button>
         </div>
       </div>
       <div id="leaderboard-list" class="leaderboard-list">
-        <div class="loading-state">⏳ 載入排行榜…</div>
+        <div class="loading-state">載入排行榜...</div>
       </div>
     </div>
   </div>
