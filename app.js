@@ -251,15 +251,18 @@ async function finishSession(typed) {
   state.isRunning  = false;
   state.isFinished = true;
 
-  const target   = state.currentArticle.content;
-  const elapsed  = state.elapsed || (Date.now() - state.startTime) / 1000;
-  const wpm      = Math.round(countWords(target) / (elapsed / 60));
-  const correct  = [...typed].filter((c, i) => c === target[i]).length;
-  const acc      = Math.round(correct / target.length * 100);
-  const grossAcc = state.grossKeystrokes > 0
+  const target    = state.currentArticle.content;
+  const elapsed   = state.elapsed || (Date.now() - state.startTime) / 1000;
+  const wordCount = countWords(target);
+  const wpm       = Math.round(wordCount / (elapsed / 60));
+  const correct   = [...typed].filter((c, i) => c === target[i]).length;
+  const acc       = Math.round(correct / target.length * 100);
+  const grossAcc  = state.grossKeystrokes > 0
     ? Math.min(100, Math.round(correct / state.grossKeystrokes * 100))
     : 100;
-  const score = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || 'medium');
+  const refTime          = wordCount / 15 * 60;
+  const completionFactor = Math.max(1, Math.min(200, Math.round(refTime / elapsed * 100)));
+  const score = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || 'medium', completionFactor);
 
   const session = {
     ts: Date.now(),
