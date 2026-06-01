@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TyperBon｜教師後台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+
+<!-- ========== LOGIN ========== -->
+<div id="teacher-login" class="screen active">
+  <div class="login-bg"><div class="grid-lines"></div></div>
+  <div class="login-card">
+    <div class="logo-mark" style="font-size:2rem">🛠</div>
+    <h1 class="logo-title">教師後台</h1>
+    <p class="logo-sub">TyperBon 文章管理</p>
+    <div class="input-group">
+      <label for="teacher-pw">管理密碼</label>
+      <input type="password" id="teacher-pw" placeholder="請輸入密碼" />
+      <span class="input-error" id="teacher-login-error"></span>
+    </div>
+    <button class="btn-primary" id="btn-teacher-login">進入後台</button>
+    <a href="../" class="teacher-link">← 回學生頁面</a>
+  </div>
+</div>
+
+<!-- ========== DASHBOARD ========== -->
+<div id="teacher-dashboard" class="screen" style="display:none">
+
+  <nav class="navbar">
+    <div class="nav-logo">🛠 TyperBon 教師後台</div>
+    <div class="nav-info">
+      <button class="btn-logout" id="btn-teacher-logout">登出</button>
+    </div>
+  </nav>
+
+  <div class="tab-bar">
+    <button class="tab active" data-teacher-tab="articles">📝 文章管理</button>
+    <button class="tab" data-teacher-tab="records">📊 學生成績</button>
+    <button class="tab" data-teacher-tab="leaderboard">🏆 排行榜</button>
+    <button class="tab" data-teacher-tab="settings">⚙️ 設定</button>
+  </div>
+
+  <!-- ── TAB: 文章管理 ── -->
+  <div id="teacher-tab-articles" class="tab-content active">
+    <div class="teacher-articles-layout">
+
+      <div class="section-card teacher-article-panel">
+        <div class="panel-header">
+          <h2 class="section-title">文章列表</h2>
+          <button class="btn-primary btn-sm" id="btn-add-article">＋ 新增文章</button>
+        </div>
+        <div id="teacher-article-list" class="teacher-article-list">
+          <div class="loading-state">⏳ 載入中…</div>
+        </div>
+      </div>
+
+      <div class="section-card teacher-editor-panel" id="teacher-editor" style="display:none">
+        <h2 class="section-title" id="editor-title-label">新增文章</h2>
+        <div class="input-group">
+          <label>文章標題</label>
+          <input type="text" id="ed-title" placeholder="例：The Solar System" />
+        </div>
+        <div class="input-group">
+          <label>難度</label>
+          <select id="ed-difficulty">
+            <option value="easy">初級 Easy</option>
+            <option value="medium" selected>中級 Medium</option>
+            <option value="hard">高級 Hard</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>文章內容（純英文，建議 100–300 字）</label>
+          <textarea id="ed-content" class="ed-textarea" placeholder="在此貼上英文文章內容……"></textarea>
+          <span class="input-hint" id="ed-word-count">0 個單字</span>
+        </div>
+        <div class="editor-actions">
+          <button class="btn-primary" id="btn-save-article">💾 儲存</button>
+          <button class="btn-secondary" id="btn-cancel-edit">取消</button>
+        </div>
+        <span class="input-error" id="editor-error"></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── TAB: 學生成績 ── -->
+  <div id="teacher-tab-records" class="tab-content">
+    <div class="section-card">
+      <h2 class="section-title">學生成績查詢</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="flex:1;min-width:180px">
+          <label>班級座號</label>
+          <input type="text" id="query-student-id" placeholder="五碼，如 80213" maxlength="5" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-query-student">查詢</button>
+        <button class="btn-secondary btn-sm" id="btn-export-all">匯出全班 CSV</button>
+      </div>
+      <div id="student-records-result" class="student-records-result"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: 排行榜 ── -->
+  <div id="teacher-tab-leaderboard" class="tab-content">
+    <div class="section-card">
+      <h2 class="section-title">🏆 排行榜</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="flex:1;min-width:140px">
+          <label>班級篩選（三碼）</label>
+          <input type="text" id="lb-class-filter" placeholder="如 802，留空則查全部" maxlength="3" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-lb-query">查詢班級</button>
+        <button class="btn-secondary btn-sm" id="btn-lb-all">查看全部</button>
+      </div>
+      <div id="teacher-leaderboard-result" class="student-records-result"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: 設定 ── -->
+  <div id="teacher-tab-settings" class="tab-content">
+    <div class="section-card" style="max-width:600px">
+      <h2 class="section-title">⚙️ 修改密碼</h2>
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:400px">
+        <div class="input-group">
+          <label>新密碼</label>
+          <input type="password" id="new-pw" placeholder="至少 6 個字元" />
+        </div>
+        <div class="input-group">
+          <label>確認新密碼</label>
+          <input type="password" id="confirm-pw" placeholder="再次輸入新密碼" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-change-pw" style="width:auto;align-self:flex-start">更改密碼</button>
+        <span class="input-error" id="pw-change-error"></span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /teacher-dashboard -->
+
+<script src="../firebase-config.js"></script>
+<script type="module" src="../teacher.js"></script>
+</body>
+</html>

@@ -11,13 +11,15 @@ TyperBon 是一個給英語課使用的打字練習平台，學生以班級座�
 
 ```
 typerbon/
-├── index.html          # 學生端主頁
-├── teacher.html        # 教師後台
-├── app.js              # 學生端邏輯
-├── teacher.js          # 教師後台邏輯
-├── data.js             # Firebase 資料層
-├── firebase-config.js  # Firebase 設定（需自行填入）
-└── style.css           # 樣式
+├── index.html              # 學生端主頁（URL: /）
+├── teacher/
+│   └── index.html          # 教師後台（URL: /teacher/）
+├── teacher.html            # 舊連結相容（自動跳轉至 /teacher/）
+├── app.js                  # 學生端邏輯
+├── teacher.js              # 教師後台邏輯
+├── data.js                 # Firebase 資料層
+├── firebase-config.js      # Firebase 設定（需自行填入）
+└── style.css               # 樣式
 ```
 
 ## 設定步驟
@@ -85,7 +87,8 @@ service cloud.firestore {
 
 ### 教師後台
 
-- 預設密碼：`teacher123`（可在後台修改）
+- 網址：`https://<帳號>.github.io/<repo名稱>/teacher/`（不需要 .html）
+- 預設密碼：`teacher123`（可在後台「設定」分頁修改）
 - 文章管理：可新增、編輯所有文章；預設文章亦可刪除，刪除前會出現確認提示
 - 成績查詢：輸入五碼座號查詢個別學生；排行榜可依三碼班級篩選或查看全部
 - CSV 匯出包含所有學生的完整練習紀錄

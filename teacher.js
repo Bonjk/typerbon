@@ -15,6 +15,10 @@ document.addEventListener("DOMContentLoaded", () => {
     $("teacher-login").classList.add("active");
     $("teacher-pw").value = "";
   });
+
+  document.querySelectorAll("[data-teacher-tab]").forEach(tab =>
+    tab.addEventListener("click", () => switchTeacherTab(tab.dataset.teacherTab)));
+
   $("btn-add-article").addEventListener("click", () => openEditor(null));
   $("btn-save-article").addEventListener("click", saveArticle);
   $("btn-cancel-edit").addEventListener("click", closeEditor);
@@ -33,6 +37,17 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-lb-all").addEventListener("click", () => renderTeacherLeaderboard(null));
 });
 
+function switchTeacherTab(name) {
+  document.querySelectorAll("[data-teacher-tab]").forEach(t =>
+    t.classList.toggle("active", t.dataset.teacherTab === name));
+  ["articles", "records", "leaderboard", "settings"].forEach(t => {
+    const el = document.getElementById(`teacher-tab-${t}`);
+    if (el) el.classList.toggle("active", t === name);
+  });
+  if (name === "articles")    renderTeacherArticleList();
+  if (name === "leaderboard") renderTeacherLeaderboard(null);
+}
+
 async function handleTeacherLogin() {
   const pw = $("teacher-pw").value;
   if (!pw) { $("teacher-login-error").textContent = "請輸入密碼"; return; }
@@ -41,7 +56,7 @@ async function handleTeacherLogin() {
   $("teacher-login-error").textContent = "";
   $("teacher-login").classList.remove("active");
   $("teacher-dashboard").style.display = "block";
-  renderTeacherArticleList();
+  switchTeacherTab("articles");
 }
 
 async function renderTeacherArticleList() {
