@@ -43,6 +43,7 @@
     <button class="tab" data-teacher-tab="records">學生成績</button>
     <button class="tab" data-teacher-tab="leaderboard">排行榜</button>
     <button class="tab" data-teacher-tab="settings">設定</button>
+    <button class="tab" data-teacher-tab="exam">考試管理</button>
   </div>
 
   <!-- ── TAB: 文章管理 ── -->
@@ -157,6 +158,34 @@
         <button class="btn-primary btn-sm" id="btn-change-pw" style="width:auto;align-self:flex-start">更改密碼</button>
         <span class="input-error" id="pw-change-error"></span>
       </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: 考試管理 ── -->
+  <div id="teacher-tab-exam" class="tab-content">
+    <div class="section-card" style="max-width:860px">
+      <div class="panel-header">
+        <h2 class="section-title">考試管理</h2>
+      </div>
+
+      <div id="exam-current-panel" style="display:none;margin-bottom:20px"></div>
+
+      <div id="exam-new-form">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="input-group" style="min-width:140px">
+            <label>考試班級（三碼）</label>
+            <input type="text" id="exam-class-code" maxlength="3" placeholder="如 802" />
+          </div>
+          <div class="input-group" style="flex:1;min-width:240px">
+            <label>考試文章</label>
+            <select id="exam-article-select"><option value="">請先切換至此頁載入...</option></select>
+          </div>
+          <button class="btn-primary btn-sm" id="btn-start-exam" style="margin-bottom:1px">開始考試</button>
+        </div>
+        <span class="input-error" id="exam-start-error"></span>
+      </div>
+
+      <div id="exam-results-container" class="student-records-result" style="margin-top:16px"></div>
     </div>
   </div>
 

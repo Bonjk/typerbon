@@ -41,6 +41,11 @@
     </div>
   </nav>
 
+  <div id="exam-banner" class="exam-banner" style="display:none">
+    <span><span class="exam-banner-label">考試模式</span><span id="exam-banner-text"></span></span>
+    <button class="btn-primary btn-sm" id="btn-join-exam">加入考試</button>
+  </div>
+
   <div class="tab-bar">
     <button class="tab active" data-tab="practice">練習</button>
     <button class="tab" data-tab="history">我的成績</button>
@@ -63,6 +68,7 @@
           <div class="stat-chip"><span class="stat-label">時間</span><span id="live-time">0s</span></div>
           <div class="stat-chip"><span class="stat-label">WPM</span><span id="live-wpm">0</span></div>
           <div class="stat-chip"><span class="stat-label">正確率</span><span id="live-acc">100%</span></div>
+          <div class="stat-chip" id="exam-time-chip" style="display:none"><span class="stat-label">剩餘</span><span id="exam-countdown">10:00</span></div>
         </div>
       </div>
       <div class="reference-box" id="reference-box"></div>
@@ -70,6 +76,7 @@
         placeholder="點此開始輸入……"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       <div class="typing-actions">
+        <button class="btn-primary" id="btn-submit-exam" style="display:none">交卷</button>
         <button class="btn-secondary" id="btn-restart">重新開始</button>
         <button class="btn-danger" id="btn-cancel">取消</button>
       </div>
@@ -96,6 +103,10 @@
         <div class="result-stat">
           <span class="rs-label">花費時間</span>
           <span class="rs-value" id="res-time">0s</span>
+        </div>
+        <div class="result-stat" id="res-completion-row" style="display:none">
+          <span class="rs-label">完成度</span>
+          <span class="rs-value" id="res-completion">0%</span>
         </div>
       </div>
       <div class="letter-breakdown">

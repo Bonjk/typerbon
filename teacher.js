@@ -1,10 +1,10 @@
 /**
  * teacher.js — 教師後台邏輯（Firebase 版）
  */
-import { ArticleStore, RecordStore, TeacherAuth,
+import { ArticleStore, RecordStore, ExamStore, TeacherAuth,
          countWords, formatDate, showToast } from "./data.js";
 
-const teacherState = { editingId: null, leaderboardCache: null };
+const teacherState = { editingId: null, leaderboardCache: null, examArticles: null };
 const $ = id => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-export-all").addEventListener("click", exportAllCSV);
 
   $("btn-change-pw").addEventListener("click", changePassword);
+  $("btn-start-exam").addEventListener("click", startExam);
 
   $("btn-lb-query").addEventListener("click", () => {
     const cls = $("lb-class-filter").value.trim();
@@ -52,13 +53,14 @@ document.addEventListener("DOMContentLoaded", () => {
 function switchTeacherTab(name) {
   document.querySelectorAll("[data-teacher-tab]").forEach(t =>
     t.classList.toggle("active", t.dataset.teacherTab === name));
-  ["articles", "records", "leaderboard", "settings"].forEach(t => {
+  ["articles", "records", "leaderboard", "settings", "exam"].forEach(t => {
     const el = document.getElementById(`teacher-tab-${t}`);
     if (el) el.classList.toggle("active", t === name);
   });
   if (name === "articles")    renderTeacherArticleList();
   if (name === "records")     loadClassDropdown();
   if (name === "leaderboard") renderTeacherLeaderboard(null);
+  if (name === "exam")        loadExamTab();
 }
 
 // ── LOGIN ──────────────────────────────────────────────────
@@ -405,6 +407,115 @@ async function renderTeacherLeaderboard(classCode) {
         <span class="lb-wpm">${r.bestWpm}</span>
         <span class="lb-acc">${r.bestAcc}%</span>
       </div>`).join("")}`;
+}
+
+// ── EXAM ───────────────────────────────────────────────────
+async function loadExamTab() {
+  const articles = await ArticleStore.getAll();
+  teacherState.examArticles = articles;
+
+  const sel = $("exam-article-select");
+  sel.innerHTML = `<option value="">請選擇...</option>` +
+    articles.map(a => {
+      const d = { easy: "初級", medium: "中級", hard: "高級" }[a.difficulty] || a.difficulty;
+      return `<option value="${escHtml(a.id)}">[${d}] ${escHtml(a.title)}</option>`;
+    }).join("");
+
+  const exam = await ExamStore.getCurrent();
+  renderExamCurrentStatus(exam);
+}
+
+function renderExamCurrentStatus(exam) {
+  const panel = $("exam-current-panel");
+  const container = $("exam-results-container");
+
+  if (!exam) {
+    panel.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+
+  const isActive = exam.status === "active";
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <div class="exam-status-bar">
+      <span class="badge badge-${isActive ? "hard" : "medium"}">${isActive ? "進行中" : "已結束"}</span>
+      <strong>${escHtml(exam.classCode)} 班</strong>
+      <span style="color:var(--text-muted)">— ${escHtml(exam.articleTitle)}</span>
+      ${isActive
+        ? `<button class="btn-danger btn-sm" id="btn-end-exam" style="margin-left:auto">結束考試</button>`
+        : ""}
+    </div>`;
+
+  if (isActive) {
+    $("btn-end-exam").addEventListener("click", async () => {
+      if (!confirm("確定要結束考試？學生將無法繼續加入。")) return;
+      await ExamStore.end();
+      showToast("考試已結束");
+      loadExamTab();
+    });
+  }
+
+  loadExamResults(exam.id);
+}
+
+async function loadExamResults(examId) {
+  const container = $("exam-results-container");
+  container.innerHTML = `<div class="loading-state">載入成績中...</div>`;
+
+  const results = await ExamStore.getResults(examId);
+  if (!results.length) {
+    container.innerHTML = `<div class="empty-state">目前尚無學生提交成績</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="sr-header">考試成績 — 共 ${results.length} 人提交</div>
+    <div class="lb-header">
+      <span class="lb-rank">名次</span>
+      <span class="lb-id">班級座號</span>
+      <span class="lb-score">分數</span>
+      <span class="lb-wpm">WPM</span>
+      <span class="lb-acc">淨正確率</span>
+      <span class="lb-acc">完成度</span>
+    </div>
+    ${results.map(r => `
+      <div class="lb-row">
+        <span class="lb-rank">${r.rank}</span>
+        <span class="lb-id">${escHtml(r.studentId)}</span>
+        <span class="lb-score">${r.score}</span>
+        <span class="lb-wpm">${r.wpm} WPM</span>
+        <span class="lb-acc">${r.accuracy}%</span>
+        <span class="lb-acc">${r.completion}%</span>
+      </div>`).join("")}`;
+}
+
+async function startExam() {
+  const classCode = $("exam-class-code").value.trim();
+  const articleId = $("exam-article-select").value;
+  const errEl     = $("exam-start-error");
+
+  if (!/^\d{3}$/.test(classCode)) { errEl.textContent = "請輸入三碼數字班級代碼"; return; }
+  if (!articleId)                  { errEl.textContent = "請選擇考試文章"; return; }
+  errEl.textContent = "";
+
+  const article = teacherState.examArticles?.find(a => a.id === articleId);
+  if (!article) { errEl.textContent = "找不到文章資料，請重新整理頁面"; return; }
+
+  const btn = $("btn-start-exam");
+  btn.disabled = true;
+  btn.textContent = "開始中...";
+  try {
+    await ExamStore.start(classCode, article);
+    showToast(`${classCode} 班考試已開始`);
+    $("exam-class-code").value = "";
+    loadExamTab();
+  } catch (e) {
+    errEl.textContent = "開始失敗：" + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "開始考試";
+  }
 }
 
 // ── UTILS ──────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 /**
  * app.js — 學生端主邏輯（Firebase 版）
  */
-import { ArticleStore, RecordStore,
+import { ArticleStore, RecordStore, ExamStore,
          calcScore, countWords, formatDate,
          validateStudentId, showToast } from "./data.js";
 
@@ -18,6 +18,12 @@ const state = {
   totalTyped: 0,
   grossKeystrokes: 0,
   leaderboardMode: "class",
+  examMode: false,
+  examId: null,
+  examDeadline: null,
+  examTimerInterval: null,
+  examSubmitted: false,
+  pendingExam: null,
 };
 
 const $ = id => document.getElementById(id);
@@ -41,6 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("btn-lb-class").addEventListener("click", () => setLbMode("class"));
   $("btn-lb-all").addEventListener("click",   () => setLbMode("all"));
 
+  $("typing-input").addEventListener("paste",   e => e.preventDefault());
   $("typing-input").addEventListener("input", handleTypingInput);
   $("typing-input").addEventListener("keydown", e => {
     if (state.isFinished || !state.currentArticle) return;
@@ -49,11 +56,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   $("btn-restart").addEventListener("click", restartSession);
   $("btn-cancel").addEventListener("click", cancelSession);
+  $("btn-join-exam").addEventListener("click", joinExam);
+  $("btn-submit-exam").addEventListener("click", () => submitExam($("typing-input").value));
   $("btn-retry").addEventListener("click", () => showTypingArea(state.currentArticle));
   $("btn-choose-another").addEventListener("click", () => {
     $("typing-area").style.display = "none";
     $("result-card").style.display = "none";
+    $("btn-retry").style.display = "";
+    $("btn-choose-another").textContent = "選其他文章";
+    $("res-completion-row").style.display = "none";
     renderArticleList();
+    checkActiveExam();
   });
 });
 
@@ -73,9 +86,20 @@ function loginAs(id) {
   $("screen-login").classList.remove("active");
   $("screen-app").style.display = "block";
   renderArticleList();
+  checkActiveExam();
 }
 
 function handleLogout() {
+  clearInterval(state.examTimerInterval);
+  state.examMode = false;
+  state.examId = null;
+  state.examDeadline = null;
+  state.examSubmitted = false;
+  state.pendingExam = null;
+  $("exam-banner").style.display = "none";
+  $("exam-time-chip").style.display = "none";
+  $("btn-submit-exam").style.display = "none";
+  $("btn-cancel").style.display = "";
   sessionStorage.removeItem("typerbon_student");
   state.studentId = null;
   state.currentArticle = null;
@@ -191,7 +215,10 @@ function handleTypingInput() {
   renderReference(target, typed.length);
   updateLiveWpm();
 
-  if (typed === target) finishSession(typed);
+  if (typed === target) {
+    if (state.examMode) submitExam(typed);
+    else                finishSession(typed);
+  }
 }
 
 function tickTimer() {
@@ -402,6 +429,124 @@ async function renderLeaderboard() {
           <span class="lb-acc">${r.bestAcc}%</span>
         </div>`;
     }).join("")}`;
+}
+
+// ── EXAM MODE ─────────────────────────────────────────────
+async function checkActiveExam() {
+  const exam = await ExamStore.getCurrent().catch(() => null);
+  const banner = $("exam-banner");
+  if (!exam || exam.status !== "active" || exam.classCode !== state.studentId?.slice(0, 3)) {
+    banner.style.display = "none";
+    state.pendingExam = null;
+    return;
+  }
+  state.pendingExam = exam;
+  $("exam-banner-text").textContent = `${exam.articleTitle}（10 分鐘）`;
+  banner.style.display = "flex";
+}
+
+function joinExam() {
+  const exam = state.pendingExam;
+  if (!exam) return;
+
+  state.examMode      = true;
+  state.examId        = exam.id;
+  state.examDeadline  = Date.now() + 10 * 60 * 1000;
+  state.examSubmitted = false;
+
+  $("exam-banner").style.display   = "none";
+  $("article-selector").style.display = "none";
+  $("result-card").style.display   = "none";
+
+  showTypingArea({
+    id: exam.articleId, title: exam.articleTitle,
+    content: exam.content, difficulty: exam.difficulty,
+  });
+
+  startExamCountdown();
+  $("exam-time-chip").style.display   = "";
+  $("btn-submit-exam").style.display  = "";
+  $("btn-cancel").style.display       = "none";
+}
+
+function startExamCountdown() {
+  clearInterval(state.examTimerInterval);
+  state.examTimerInterval = setInterval(() => {
+    const remaining = state.examDeadline - Date.now();
+    if (remaining <= 0) {
+      clearInterval(state.examTimerInterval);
+      if (!state.examSubmitted) submitExam($("typing-input").value);
+      return;
+    }
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    const el   = $("exam-countdown");
+    el.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
+    el.style.color = remaining < 60000 ? "var(--danger)" : "";
+  }, 500);
+}
+
+async function submitExam(typed) {
+  if (state.examSubmitted) return;
+  state.examSubmitted = true;
+  clearInterval(state.timerInterval);
+  clearInterval(state.examTimerInterval);
+  state.isRunning  = false;
+  state.isFinished = true;
+
+  const target     = state.currentArticle.content;
+  const submitted  = typed.slice(0, target.length);
+  const elapsed    = state.startTime ? (Date.now() - state.startTime) / 1000 : 0.01;
+  const wpm        = submitted.length > 0 && elapsed > 0.5
+    ? Math.round(countWords(submitted) / (elapsed / 60)) : 0;
+  const correct    = [...submitted].filter((c, i) => c === target[i]).length;
+  const acc        = submitted.length > 0 ? Math.round(correct / submitted.length * 100) : 0;
+  const grossAcc   = state.grossKeystrokes > 0
+    ? Math.min(100, Math.round(correct / state.grossKeystrokes * 100)) : 0;
+  const completion = Math.round(submitted.length / target.length * 100);
+  const score      = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || "medium", completion);
+
+  const result = {
+    studentId: state.studentId,
+    classCode: state.studentId.slice(0, 3),
+    wpm, accuracy: acc, grossAccuracy: grossAcc,
+    completion, score, elapsed: Math.round(elapsed),
+    articleTitle: state.currentArticle.title,
+    letterStats: { ...state.letterStats },
+  };
+
+  // Show results
+  $("typing-area").style.display = "none";
+  $("result-card").style.display = "block";
+  const grade = score >= 8500 ? "優秀" : score >= 7000 ? "不錯" : score >= 5500 ? "繼續加油" : "多加練習";
+  $("result-emoji").textContent     = grade + "（考試）";
+  $("res-score").textContent        = score;
+  $("res-wpm").textContent          = wpm + " WPM";
+  $("res-acc").textContent          = acc + "%";
+  $("res-time").textContent         = Math.round(elapsed) + "s";
+  $("res-completion-row").style.display = "";
+  $("res-completion").textContent   = completion + "%";
+  renderLetterBreakdown(result.letterStats);
+  $("btn-retry").style.display      = "none";
+  $("btn-choose-another").textContent = "回到練習";
+
+  // Restore exam UI elements
+  $("exam-time-chip").style.display  = "none";
+  $("btn-submit-exam").style.display = "none";
+  $("btn-cancel").style.display      = "";
+
+  // Save to Firestore
+  const savedExamId = state.examId;
+  state.examMode = false;
+  state.examId   = null;
+  state.examDeadline = null;
+  state.pendingExam  = null;
+
+  try {
+    await ExamStore.submitResult(savedExamId, state.studentId, result);
+  } catch {
+    showToast("成績儲存失敗，請檢查網路連線");
+  }
 }
 
 // ── CELEBRATIONS ──────────────────────────────────────────

@@ -241,7 +241,7 @@ const TeacherAuth = {
 };
 
 // ── 工具函式 ───────────────────────────────────────────────
-function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium') {
+function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium', completion = 100) {
   const D = ({ easy: 0.90, medium: 0.95, hard: 1.00 })[difficulty] ?? 1.00;
   const aScore = Math.pow(netAcc / 100, 2) * 100;
   const w = wpm >= 30 ? 100
@@ -249,7 +249,7 @@ function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium') {
     : wpm >= 10 ? 60 + 2 * (wpm - 10)
     : 6 * wpm;
   const g = Math.pow(Math.min(grossAcc, 100) / 100, 0.3);
-  return Math.round((aScore * 0.649 + w * 0.351) * g * D * 100);
+  return Math.round((aScore * 0.649 + w * 0.351) * g * D * completion);
 }
 
 function countWords(text) {
@@ -282,6 +282,53 @@ function showToast(msg, duration = 2200) {
   setTimeout(() => el.classList.remove("show"), duration);
 }
 
-export { db, ArticleStore, RecordStore, TeacherAuth,
+// ── ExamStore ──────────────────────────────────────────────
+const ExamStore = {
+  /** 取得目前進行中的考試（若無則回傳 null） */
+  async getCurrent() {
+    const snap = await getDoc(doc(db, "settings", "activeExam"));
+    if (!snap.exists()) return null;
+    const d = snap.data();
+    return d.id ? d : null;
+  },
+
+  /** 開始考試：傳入完整 article 物件避免重複讀取 Firestore */
+  async start(classCode, article) {
+    const id = `exam_${Date.now()}`;
+    await setDoc(doc(db, "settings", "activeExam"), {
+      id, classCode,
+      articleId:    article.id,
+      articleTitle: article.title,
+      content:      article.content,
+      difficulty:   article.difficulty || "medium",
+      status:       "active",
+      startedAt:    serverTimestamp(),
+    });
+    return id;
+  },
+
+  /** 結束考試 */
+  async end() {
+    await updateDoc(doc(db, "settings", "activeExam"), { status: "ended" });
+  },
+
+  /** 學生提交成績 */
+  async submitResult(examId, studentId, result) {
+    await setDoc(doc(db, "exams", examId, "results", studentId), {
+      ...result, submittedAt: serverTimestamp(),
+    });
+  },
+
+  /** 取得該場考試所有成績（依分數排序） */
+  async getResults(examId) {
+    const snap = await getDocs(collection(db, "exams", examId, "results"));
+    return snap.docs
+      .map(d => d.data())
+      .sort((a, b) => b.score - a.score)
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  },
+};
+
+export { db, ArticleStore, RecordStore, ExamStore, TeacherAuth,
          calcScore, countWords, formatDate, validateStudentId, showToast };
 
