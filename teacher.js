@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-query-student").addEventListener("click", queryStudent);
   $("query-student-id").addEventListener("keydown", e => { if (e.key === "Enter") queryStudent(); });
   $("btn-export-all").addEventListener("click", exportAllCSV);
+  $("btn-change-pw").addEventListener("click", changePassword);
   $("btn-lb-query").addEventListener("click", () => {
     const cls = $("lb-class-filter").value.trim();
     renderTeacherLeaderboard(cls || null);
@@ -235,6 +236,24 @@ async function exportAllCSV() {
   } finally {
     btn.textContent = "匯出全班 CSV";
     btn.disabled = false;
+  }
+}
+
+async function changePassword() {
+  const newPw     = $("new-pw").value;
+  const confirmPw = $("confirm-pw").value;
+  const errEl     = $("pw-change-error");
+  if (!newPw)              { errEl.textContent = "請輸入新密碼"; return; }
+  if (newPw.length < 6)   { errEl.textContent = "密碼至少需要 6 個字元"; return; }
+  if (newPw !== confirmPw) { errEl.textContent = "兩次輸入的密碼不一致"; return; }
+  errEl.textContent = "";
+  try {
+    await TeacherAuth.setPassword(newPw);
+    showToast("✅ 密碼已更新");
+    $("new-pw").value = "";
+    $("confirm-pw").value = "";
+  } catch (e) {
+    errEl.textContent = "更新失敗：" + e.message;
   }
 }
 

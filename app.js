@@ -16,6 +16,7 @@ const state = {
   isFinished: false,
   letterStats: {},
   totalTyped: 0,
+  leaderboardMode: "class",
 };
 
 const $ = id => document.getElementById(id);
@@ -35,6 +36,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll(".tab").forEach(tab =>
     tab.addEventListener("click", () => switchTab(tab.dataset.tab))
   );
+
+  $("btn-lb-class").addEventListener("click", () => setLbMode("class"));
+  $("btn-lb-all").addEventListener("click",   () => setLbMode("all"));
 
   $("typing-input").addEventListener("input", handleTypingInput);
   $("btn-restart").addEventListener("click", restartSession);
@@ -321,11 +325,19 @@ async function renderHistory() {
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────
+function setLbMode(mode) {
+  state.leaderboardMode = mode;
+  $("btn-lb-class").classList.toggle("active", mode === "class");
+  $("btn-lb-all").classList.toggle("active",   mode === "all");
+  renderLeaderboard();
+}
+
 async function renderLeaderboard() {
   const el = $("leaderboard-list");
   el.innerHTML = `<div class="loading-state">⏳ 載入排行榜…</div>`;
 
-  const classCode = state.studentId ? state.studentId.slice(0, 3) : null;
+  const classCode = (state.leaderboardMode === "class" && state.studentId)
+    ? state.studentId.slice(0, 3) : null;
   const all = await RecordStore.getAllLeaderboard();
   const rows = classCode
     ? all.filter(r => r.studentId && r.studentId.startsWith(classCode))

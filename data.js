@@ -17,45 +17,94 @@ import { getFirestore, collection, doc,
 const _app = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(_app);
 
-// ── 預設文章（第一次啟動時寫入 Firestore） ─────────────────
+// ── 預設文章 ───────────────────────────────────────────────
+const SEED_VERSION = 2;
+
 const DEFAULT_ARTICLES = [
   {
     id: "default-1",
-    title: "Unit 1 – The Internet",
+    title: "The Internet",
     difficulty: "easy",
     content: "The Internet is a global network of computers that allows people to share information and communicate with each other. It was first developed in the 1960s as a way for scientists to share research. Today, billions of people use the Internet every day to send emails, watch videos, shop online, and connect with friends. The Internet has changed the way we live, work, and learn. It has made the world a smaller and more connected place for everyone."
   },
   {
     id: "default-2",
-    title: "Unit 2 – Healthy Habits",
+    title: "Healthy Habits",
     difficulty: "easy",
     content: "Living a healthy life means making good choices every day. Eating plenty of fruits and vegetables gives your body the vitamins it needs. Drinking enough water keeps you hydrated and helps your organs work properly. Exercise is also very important. Walking, running, or playing sports for at least thirty minutes a day can improve your heart health and boost your mood. Getting enough sleep each night helps your brain rest and recover. Small daily habits can lead to big changes over time."
   },
   {
     id: "default-3",
-    title: "Unit 3 – Climate Change",
+    title: "Climate Change",
     difficulty: "medium",
     content: "Climate change refers to long-term shifts in global temperatures and weather patterns. While some climate change occurs naturally, human activities have been the main driver since the industrial revolution. Burning fossil fuels such as coal, oil, and gas releases greenhouse gases into the atmosphere. These gases trap heat and cause the planet to warm. Rising temperatures lead to melting ice caps, higher sea levels, and more extreme weather events. Governments, businesses, and individuals must all work together to reduce emissions and protect our planet for future generations."
   },
   {
     id: "default-4",
-    title: "Unit 4 – Artificial Intelligence",
+    title: "Artificial Intelligence",
     difficulty: "hard",
     content: "Artificial intelligence, or AI, refers to computer systems designed to perform tasks that typically require human intelligence. These tasks include recognizing speech, translating languages, identifying images, and making complex decisions. Machine learning, a subset of AI, enables computers to learn from large amounts of data and improve their performance over time without being explicitly programmed. AI is already embedded in many aspects of daily life, from recommendation algorithms on streaming platforms to navigation systems in vehicles. As the technology continues to advance, questions about ethics, employment, and privacy become increasingly important for society to address."
+  },
+  {
+    id: "default-5",
+    title: "To Be or Not To Be — Hamlet",
+    difficulty: "hard",
+    content: "To be, or not to be, that is the question: Whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune, or to take arms against a sea of troubles and by opposing end them. To die, to sleep, no more; and by a sleep to say we end the heartache and the thousand natural shocks that flesh is heir to: it is a consummation devoutly to be wished. To die, to sleep; to sleep, perchance to dream. Ay, there is the rub; for in that sleep of death what dreams may come when we have shuffled off this mortal coil must give us pause."
+  },
+  {
+    id: "default-6",
+    title: "A Tale of Two Cities — Charles Dickens",
+    difficulty: "medium",
+    content: "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair, we had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way. In short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only."
+  },
+  {
+    id: "default-7",
+    title: "Pride and Prejudice — Jane Austen",
+    difficulty: "medium",
+    content: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered as the rightful property of some one or other of their daughters. My dear Mr. Bennet, said his lady to him one day, have you heard that Netherfield Park is let at last? Mr. Bennet replied that he had not. But it is, returned she; for Mrs. Long has just been here, and she told me all about it."
+  },
+  {
+    id: "default-8",
+    title: "The Great Gatsby — F. Scott Fitzgerald",
+    difficulty: "easy",
+    content: "In my younger and more vulnerable years my father gave me some advice that I have been turning over in my mind ever since. Whenever you feel like criticizing anyone, he told me, just remember that all the people in this world have not had the advantages that you have had. He did not say any more, but we have always been unusually communicative in a reserved way, and I understood that he meant a great deal more than that. In consequence I am inclined to reserve all judgments, a habit that has opened up many curious natures to me."
+  },
+  {
+    id: "default-9",
+    title: "The Tell-Tale Heart — Edgar Allan Poe",
+    difficulty: "medium",
+    content: "True, nervous, very dreadfully nervous I had been and am; but why will you say that I am mad? The disease had sharpened my senses, not destroyed, not dulled them. Above all was the sense of hearing acute. I heard all things in the heaven and in the earth. I heard many things in hell. How then am I mad? Hearken, and observe how healthily, how calmly I can tell you the whole story. It is impossible to say how first the idea entered my brain; but once conceived, it haunted me day and night. Object there was none. Passion there was none. I loved the old man."
+  },
+  {
+    id: "default-10",
+    title: "Moby Dick — Herman Melville",
+    difficulty: "easy",
+    content: "Call me Ishmael. Some years ago, never mind how long precisely, having little money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen, and regulating the circulation. Whenever I find myself growing grim about the mouth, whenever it is a damp, drizzly November in my soul, whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet, I account it high time to get to sea as soon as I can."
+  },
+  {
+    id: "default-11",
+    title: "Alice's Adventures in Wonderland — Lewis Carroll",
+    difficulty: "easy",
+    content: "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, and what is the use of a book, thought Alice, without pictures or conversations? So she was considering in her own mind, as well as she could, for the hot day made her feel very sleepy and stupid, whether the pleasure of making a daisy chain would be worth the trouble of getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her."
+  },
+  {
+    id: "default-12",
+    title: "Jane Eyre — Charlotte Bronte",
+    difficulty: "hard",
+    content: "There was no possibility of taking a walk that day. We had been wandering, indeed, in the leafless shrubbery an hour in the morning; but since dinner the cold winter wind had brought with it clouds so sombre, and a rain so penetrating, that further outdoor exercise was now out of the question. I was glad of it: I never liked long walks, especially on chilly afternoons. Dreadful to me was the coming home in the raw twilight, with nipped fingers and toes, and a heart saddened by the chidings of Bessie, the nurse, and humbled by the consciousness of my physical inferiority to Eliza, John, and Georgiana Reed."
   }
 ];
 
 // ── ArticleStore ───────────────────────────────────────────
 const ArticleStore = {
-  /** 確保預設文章存在（只在第一次執行時寫入） */
   async ensureDefaults() {
+    const seededRef = doc(db, "settings", "seeded");
+    const seeded = await getDoc(seededRef);
+    if (seeded.exists() && (seeded.data().version || 0) >= SEED_VERSION) return;
     for (const a of DEFAULT_ARTICLES) {
-      const ref = doc(db, "articles", a.id);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        await setDoc(ref, { ...a, isDefault: true, createdAt: serverTimestamp() });
-      }
+      await setDoc(doc(db, "articles", a.id), { ...a, isDefault: true, createdAt: serverTimestamp() });
     }
+    await setDoc(seededRef, { version: SEED_VERSION, seededAt: serverTimestamp() });
   },
 
   async getAll() {

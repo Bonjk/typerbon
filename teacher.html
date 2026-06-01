@@ -86,6 +86,22 @@
     </div>
 
     <div class="section-card teacher-records-panel">
+      <h2 class="section-title">修改密碼</h2>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="min-width:180px">
+          <label>新密碼</label>
+          <input type="password" id="new-pw" placeholder="至少 6 個字元" />
+        </div>
+        <div class="input-group" style="min-width:180px">
+          <label>確認新密碼</label>
+          <input type="password" id="confirm-pw" placeholder="再次輸入新密碼" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-change-pw">更改密碼</button>
+      </div>
+      <span class="input-error" id="pw-change-error"></span>
+    </div>
+
+    <div class="section-card teacher-records-panel">
       <h2 class="section-title">🏆 排行榜</h2>
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div class="input-group" style="flex:1;min-width:140px">

@@ -44,7 +44,7 @@
   <div class="tab-bar">
     <button class="tab active" data-tab="practice">📝 練習</button>
     <button class="tab" data-tab="history">📊 我的成績</button>
-    <button class="tab" data-tab="leaderboard">🏆 同班排行榜</button>
+    <button class="tab" data-tab="leaderboard">🏆 排行榜</button>
   </div>
 
   <!-- ── TAB: PRACTICE ── -->
@@ -127,7 +127,13 @@
   <!-- ── TAB: LEADERBOARD ── -->
   <div id="tab-leaderboard" class="tab-content">
     <div class="section-card">
-      <h2 class="section-title">🏆 同班排行榜 <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">（每人最高分）</span></h2>
+      <div class="lb-section-header">
+        <h2 class="section-title" style="margin:0">🏆 排行榜 <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">（每人最高分）</span></h2>
+        <div class="lb-toggle">
+          <button class="lb-toggle-btn active" id="btn-lb-class">同班</button>
+          <button class="lb-toggle-btn" id="btn-lb-all">全體</button>
+        </div>
+      </div>
       <div id="leaderboard-list" class="leaderboard-list">
         <div class="loading-state">⏳ 載入排行榜…</div>
       </div>
