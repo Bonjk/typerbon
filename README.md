@@ -1,95 +1,129 @@
-# TypeDojo — 英文打字練習平台
-
-架設在 GitHub Pages 的靜態打字練習網站。
+# TypeDojo — Firebase 版
 
 ## 檔案結構
 
 ```
 typing-practice/
-├── index.html     學生練習主頁
-├── teacher.html   教師後台
-├── style.css      樣式表
-├── data.js        資料層（文章、成績、工具函式）
-├── app.js         學生端邏輯
-└── teacher.js     教師後台邏輯
+├── index.html          學生主頁
+├── teacher.html        教師後台
+├── style.css           樣式表
+├── firebase-config.js  ⚠️ 填入你的 Firebase 設定值
+├── data.js             資料層（Firestore）
+├── app.js              學生端邏輯
+└── teacher.js          教師後台邏輯
 ```
 
-## 部署步驟（GitHub Pages）
+---
 
-1. 在 GitHub 建立新 repository（例如：`typing-practice`）
-2. 將以上所有檔案上傳至 repository 根目錄
-3. 進入 repository → **Settings** → **Pages**
-4. Source 選擇 **Deploy from a branch**，Branch 選 `main`，資料夾選 `/ (root)`
-5. 儲存後等待約 1 分鐘，網址會是：
-   ```
-   https://你的帳號.github.io/typing-practice/
-   ```
+## 步驟一：建立 Firebase 專案
+
+1. 前往 https://console.firebase.google.com
+2. 按「新增專案」，名稱填 `typedojo`，關閉 Google Analytics（不需要）
+3. 左側選「Firestore Database」→「建立資料庫」
+   - 模式選**正式模式**（之後設安全規則）
+   - 地區選 `asia-east1`（台灣最近）
+4. 左側選「專案設定」（齒輪圖示）→「你的應用程式」→「</> 網頁應用程式」
+   - 名稱填 `typedojo-web`，按「註冊應用程式」
+   - 複製 `firebaseConfig` 物件裡的值
+
+---
+
+## 步驟二：填入設定值
+
+開啟 `firebase-config.js`，把 `YOUR_XXX` 換成你的值：
+
+```js
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSy...",
+  authDomain:        "typedojo-xxxx.firebaseapp.com",
+  projectId:         "typedojo-xxxx",
+  storageBucket:     "typedojo-xxxx.appspot.com",
+  messagingSenderId: "123456789",
+  appId:             "1:123456789:web:abcdef"
+};
+```
+
+---
+
+## 步驟三：設定 Firestore 安全規則
+
+Firebase Console → Firestore → 規則，貼上以下內容後按「發布」：
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 文章：所有人可讀，不可從前端寫（只有後台透過密碼操作）
+    match /articles/{id} {
+      allow read: if true;
+      allow write: if true;  // 部署後可改成 false，改用 Firebase Admin SDK
+    }
+
+    // 個人成績：所有人可讀自己的，可新增，不可修改/刪除
+    match /records/{studentId}/sessions/{sessionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // 排行榜：所有人可讀，可寫（由前端更新最高分）
+    match /leaderboard/{studentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 教師設定（密碼）：只允許讀，寫由後台控制
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
+```
+
+---
+
+## 步驟四：部署到 GitHub Pages
+
+1. 建立 GitHub repository（公開）
+2. 上傳所有 7 個檔案
+3. Settings → Pages → Branch: main / (root) → Save
 
 ---
 
 ## 教師後台
 
-網址：`https://你的帳號.github.io/typing-practice/teacher.html`
+網址：`https://帳號.github.io/repo名/teacher.html`
 
 **預設密碼：`teacher123`**
 
-> ⚠️ 注意：密碼儲存在瀏覽器的 `localStorage`，修改密碼只影響當前瀏覽器。
-> 若需要統一密碼，請直接修改 `data.js` 裡的 `DEFAULT_PW` 值。
-
-### 後台功能
-- **文章管理**：新增、編輯、刪除文章（預設文章無法刪除）
-- **學生查詢**：輸入班級座號查看個別成績
-- **匯出 CSV**：下載全班成績 Excel 可開啟的 CSV 檔
+密碼儲存在 Firestore `settings/teacher`，第一次登入後可從後台修改。
 
 ---
 
-## 學生登入格式
-
-五碼數字 = **班級三碼** + **座號兩碼**
-
-| 範例 | 班級 | 座號 |
-|------|------|------|
-| 80213 | 802 班 | 13 號 |
-| 70934 | 709 班 | 34 號 |
-| 10105 | 101 班 | 05 號 |
-
----
-
-## 成績計算公式
+## 成績公式
 
 ```
-綜合分數 = WPM × 正確率² × 100
+分數 = WPM × 正確率² × 100
 ```
-
-- **WPM**（Words Per Minute）：每分鐘打幾個英文單字
-- **正確率**：0.0 ~ 1.0（例如 95% → 0.95）
-- 正確率取平方，讓打錯字的懲罰遠大於速度慢
-
-| WPM | 正確率 | 分數 |
-|-----|--------|------|
-| 40  | 100%   | 4000 |
-| 40  | 90%    | 3240 |
-| 60  | 85%    | 4335 |
-| 30  | 70%    | 1470 |
 
 ---
 
-## 資料儲存說明
+## Firestore 資料結構
 
-所有資料儲存在**學生自己的瀏覽器** `localStorage`：
-
-- 成績跨次登入保留（同一瀏覽器）
-- 換瀏覽器或裝置資料不會同步
-- 清除瀏覽器資料會刪除所有紀錄
-
-> 若需要跨裝置同步，需要接後端資料庫（如 Firebase）。
-
----
-
-## 修改預設密碼（永久生效）
-
-開啟 `data.js`，找到：
-```javascript
-DEFAULT_PW: "teacher123",
 ```
-改成你想要的密碼後重新上傳即可。
+articles/
+  {id}: { title, difficulty, content, isDefault, createdAt }
+
+records/
+  {studentId}/
+    sessions/
+      {sessionId}: { ts, articleId, articleTitle, wpm, accuracy, score, elapsed, letterStats }
+
+leaderboard/
+  {studentId}: { studentId, bestScore, bestWpm, bestAcc, articleTitle, updatedAt }
+
+settings/
+  teacher: { password }
+```

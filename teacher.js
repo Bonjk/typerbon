@@ -1,56 +1,44 @@
 /**
- * teacher.js — 教師後台邏輯
+ * teacher.js — 教師後台邏輯（Firebase 版）
  */
+import { ArticleStore, RecordStore, TeacherAuth,
+         countWords, formatDate, showToast } from "./data.js";
 
-// ── STATE ─────────────────────────────────────────────────
-const teacherState = {
-  editingId: null,   // null = new article, string = editing existing
-};
+const teacherState = { editingId: null };
+const $ = id => document.getElementById(id);
 
-// ── INIT ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   $("btn-teacher-login").addEventListener("click", handleTeacherLogin);
-  $("teacher-pw").addEventListener("keydown", e => {
-    if (e.key === "Enter") handleTeacherLogin();
-  });
+  $("teacher-pw").addEventListener("keydown", e => { if (e.key === "Enter") handleTeacherLogin(); });
   $("btn-teacher-logout").addEventListener("click", () => {
     $("teacher-dashboard").style.display = "none";
     $("teacher-login").classList.add("active");
     $("teacher-pw").value = "";
   });
-
-  $("btn-add-article").addEventListener("click", openEditor);
+  $("btn-add-article").addEventListener("click", () => openEditor(null));
   $("btn-save-article").addEventListener("click", saveArticle);
   $("btn-cancel-edit").addEventListener("click", closeEditor);
   $("ed-content").addEventListener("input", updateWordCount);
-
   $("btn-query-student").addEventListener("click", queryStudent);
-  $("query-student-id").addEventListener("keydown", e => {
-    if (e.key === "Enter") queryStudent();
-  });
+  $("query-student-id").addEventListener("keydown", e => { if (e.key === "Enter") queryStudent(); });
   $("btn-export-all").addEventListener("click", exportAllCSV);
 });
 
-function $(id) { return document.getElementById(id); }
-
-// ── LOGIN ─────────────────────────────────────────────────
-function handleTeacherLogin() {
+async function handleTeacherLogin() {
   const pw = $("teacher-pw").value;
   if (!pw) { $("teacher-login-error").textContent = "請輸入密碼"; return; }
-  if (!TeacherAuth.check(pw)) {
-    $("teacher-login-error").textContent = "密碼錯誤";
-    return;
-  }
+  const ok = await TeacherAuth.check(pw);
+  if (!ok) { $("teacher-login-error").textContent = "密碼錯誤"; return; }
   $("teacher-login-error").textContent = "";
   $("teacher-login").classList.remove("active");
   $("teacher-dashboard").style.display = "block";
   renderTeacherArticleList();
 }
 
-// ── ARTICLE MANAGEMENT ───────────────────────────────────
-function renderTeacherArticleList() {
-  const articles = ArticleStore.getAll();
+async function renderTeacherArticleList() {
   const list = $("teacher-article-list");
+  list.innerHTML = `<div class="loading-state">⏳ 載入中…</div>`;
+  const articles = await ArticleStore.getAll();
 
   if (!articles.length) {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div>目前沒有文章，請新增。</div>`;
@@ -59,52 +47,55 @@ function renderTeacherArticleList() {
 
   list.innerHTML = articles.map(a => {
     const diffLabel = { easy: "初級", medium: "中級", hard: "高級" }[a.difficulty] || a.difficulty;
-    const diffClass = `badge-${a.difficulty}`;
-    const isDefault = ArticleStore.isDefault(a.id);
-    const delBtn = isDefault
+    const isDef = ArticleStore.isDefault(a);
+    const delBtn = isDef
       ? `<button class="ta-btn-del" disabled title="預設文章無法刪除" style="opacity:.3">🗑</button>`
-      : `<button class="ta-btn-del" onclick="deleteArticle('${escHtml(a.id)}')" title="刪除">🗑</button>`;
+      : `<button class="ta-btn-del" data-del="${escHtml(a.id)}" title="刪除">🗑</button>`;
     return `
       <div class="ta-row">
         <div style="flex:1">
           <div class="ta-row-title">${escHtml(a.title)}</div>
           <div class="ta-row-meta">
-            <span class="badge ${diffClass}">${diffLabel}</span>
+            <span class="badge badge-${a.difficulty}">${diffLabel}</span>
             &nbsp;${countWords(a.content)} 字
-            ${isDefault ? '<span style="color:var(--text-dim);font-size:.72rem"> · 預設</span>' : ''}
+            ${isDef ? '<span style="color:var(--text-dim);font-size:.72rem"> · 預設</span>' : ''}
           </div>
         </div>
-        <button class="ta-btn-edit" onclick="editArticle('${escHtml(a.id)}')">編輯</button>
+        <button class="ta-btn-edit" data-edit="${escHtml(a.id)}">編輯</button>
         ${delBtn}
-      </div>
-    `;
+      </div>`;
   }).join("");
+
+  // Attach events
+  list.querySelectorAll("[data-edit]").forEach(btn =>
+    btn.addEventListener("click", () => openEditor(btn.dataset.edit)));
+  list.querySelectorAll("[data-del]").forEach(btn =>
+    btn.addEventListener("click", () => deleteArticle(btn.dataset.del)));
 }
 
-function openEditor(articleId = null) {
+function openEditor(articleId) {
   teacherState.editingId = articleId;
-
   if (articleId) {
-    const article = ArticleStore.getAll().find(a => a.id === articleId);
-    if (!article) return;
-    $("editor-title-label").textContent = "編輯文章";
-    $("ed-title").value = article.title;
-    $("ed-difficulty").value = article.difficulty;
-    $("ed-content").value = article.content;
+    ArticleStore.getAll().then(articles => {
+      const a = articles.find(x => x.id === articleId);
+      if (!a) return;
+      $("editor-title-label").textContent = "編輯文章";
+      $("ed-title").value = a.title;
+      $("ed-difficulty").value = a.difficulty;
+      $("ed-content").value = a.content;
+      updateWordCount();
+    });
   } else {
     $("editor-title-label").textContent = "新增文章";
     $("ed-title").value = "";
     $("ed-difficulty").value = "medium";
     $("ed-content").value = "";
+    updateWordCount();
   }
-
-  updateWordCount();
   $("editor-error").textContent = "";
   $("teacher-editor").style.display = "block";
   $("ed-title").focus();
 }
-
-function editArticle(id) { openEditor(id); }
 
 function closeEditor() {
   $("teacher-editor").style.display = "none";
@@ -114,10 +105,10 @@ function closeEditor() {
 function updateWordCount() {
   const wc = countWords($("ed-content").value || "");
   $("ed-word-count").textContent = `${wc} 個單字`;
-  $("ed-word-count").style.color = wc < 50 ? "var(--warn)" : wc > 500 ? "var(--warn)" : "var(--text-muted)";
+  $("ed-word-count").style.color = (wc < 50 || wc > 500) ? "var(--warn)" : "var(--text-muted)";
 }
 
-function saveArticle() {
+async function saveArticle() {
   const title   = $("ed-title").value.trim();
   const content = $("ed-content").value.trim();
   const diff    = $("ed-difficulty").value;
@@ -125,34 +116,43 @@ function saveArticle() {
 
   if (!title)   { errEl.textContent = "請輸入文章標題"; return; }
   if (!content) { errEl.textContent = "請輸入文章內容"; return; }
-  if (countWords(content) < 10) { errEl.textContent = "文章內容至少需要 10 個單字"; return; }
+  if (countWords(content) < 10) { errEl.textContent = "文章至少需要 10 個單字"; return; }
 
   errEl.textContent = "";
+  $("btn-save-article").textContent = "儲存中…";
+  $("btn-save-article").disabled = true;
 
-  if (teacherState.editingId) {
-    const isDefault = ArticleStore.isDefault(teacherState.editingId);
-    if (isDefault) {
-      // Clone default as custom with new id
-      ArticleStore.add({ title, difficulty: diff, content });
-      showToast("已另存為新文章（預設文章不修改）");
+  try {
+    if (teacherState.editingId) {
+      const articles = await ArticleStore.getAll();
+      const a = articles.find(x => x.id === teacherState.editingId);
+      if (a && ArticleStore.isDefault(a)) {
+        await ArticleStore.add({ title, difficulty: diff, content });
+        showToast("已另存為新文章（預設文章不修改）");
+      } else {
+        await ArticleStore.update({ id: teacherState.editingId, title, difficulty: diff, content });
+        showToast("✅ 文章已更新");
+      }
     } else {
-      ArticleStore.update({ id: teacherState.editingId, title, difficulty: diff, content });
-      showToast("✅ 文章已更新");
+      await ArticleStore.add({ title, difficulty: diff, content });
+      showToast("✅ 文章已新增");
     }
-  } else {
-    ArticleStore.add({ title, difficulty: diff, content });
-    showToast("✅ 文章已新增");
+    closeEditor();
+    renderTeacherArticleList();
+  } catch (e) {
+    errEl.textContent = "儲存失敗：" + e.message;
+  } finally {
+    $("btn-save-article").textContent = "💾 儲存";
+    $("btn-save-article").disabled = false;
   }
-
-  closeEditor();
-  renderTeacherArticleList();
 }
 
-function deleteArticle(id) {
-  const article = ArticleStore.getAll().find(a => a.id === id);
-  if (!article) return;
-  if (!confirm(`確定要刪除「${article.title}」嗎？`)) return;
-  const ok = ArticleStore.delete(id);
+async function deleteArticle(id) {
+  const articles = await ArticleStore.getAll();
+  const a = articles.find(x => x.id === id);
+  if (!a) return;
+  if (!confirm(`確定要刪除「${a.title}」嗎？`)) return;
+  const ok = await ArticleStore.delete(id);
   if (ok) {
     showToast("🗑 已刪除");
     renderTeacherArticleList();
@@ -162,14 +162,13 @@ function deleteArticle(id) {
   }
 }
 
-// ── STUDENT RECORDS ──────────────────────────────────────
-function queryStudent() {
+async function queryStudent() {
   const id = $("query-student-id").value.trim();
   const resultEl = $("student-records-result");
-
   if (!id) { resultEl.innerHTML = `<div class="input-error">請輸入班級座號</div>`; return; }
 
-  const records = RecordStore.getByStudent(id);
+  resultEl.innerHTML = `<div class="loading-state">⏳ 查詢中…</div>`;
+  const records = await RecordStore.getByStudent(id);
 
   if (!records.length) {
     resultEl.innerHTML = `<div class="sr-header">班級座號：${escHtml(id)}</div>
@@ -177,10 +176,10 @@ function queryStudent() {
     return;
   }
 
-  const avgScore = Math.round(records.reduce((s, r) => s + r.score, 0) / records.length);
+  const avgScore  = Math.round(records.reduce((s, r) => s + r.score, 0) / records.length);
   const bestScore = Math.max(...records.map(r => r.score));
-  const avgWpm  = Math.round(records.reduce((s, r) => s + r.wpm, 0) / records.length);
-  const avgAcc  = Math.round(records.reduce((s, r) => s + r.accuracy, 0) / records.length);
+  const avgWpm    = Math.round(records.reduce((s, r) => s + r.wpm, 0) / records.length);
+  const avgAcc    = Math.round(records.reduce((s, r) => s + r.accuracy, 0) / records.length);
 
   resultEl.innerHTML = `
     <div class="sr-header">班級座號：${escHtml(id)} ／ 共 ${records.length} 次練習</div>
@@ -198,62 +197,45 @@ function queryStudent() {
           <span class="hr-score">分 ${r.score}</span>
           <span class="hr-wpm">${r.wpm} WPM</span>
           <span class="hr-acc">${r.accuracy}%</span>
-        </div>
-      `).join("")}
-    </div>
-  `;
+        </div>`).join("")}
+    </div>`;
 }
 
-// ── EXPORT CSV ────────────────────────────────────────────
-function exportAllCSV() {
-  const all = RecordStore.getAllRecords();
-  const studentIds = Object.keys(all);
+async function exportAllCSV() {
+  const btn = $("btn-export-all");
+  btn.textContent = "匯出中…";
+  btn.disabled = true;
 
-  if (!studentIds.length) {
-    showToast("目前沒有任何學生紀錄");
-    return;
+  try {
+    const rows = await RecordStore.getAllRecordsFlat();
+    if (!rows.length) { showToast("目前沒有任何學生紀錄"); return; }
+
+    const headers = ["班級座號","練習日期","文章標題","分數","WPM","正確率(%)","花費時間(s)"];
+    const lines = [headers, ...rows.map(r => [
+      r.studentId, formatDate(r.ts), r.articleTitle,
+      r.score, r.wpm, r.accuracy, r.elapsed
+    ])].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(","));
+
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `typedojo_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("✅ CSV 已匯出");
+  } catch(e) {
+    showToast("匯出失敗：" + e.message);
+  } finally {
+    btn.textContent = "匯出全班 CSV";
+    btn.disabled = false;
   }
-
-  const rows = [["班級座號", "練習日期", "文章標題", "分數", "WPM", "正確率(%)", "花費時間(s)"]];
-
-  studentIds.forEach(id => {
-    all[id].forEach(r => {
-      rows.push([
-        id,
-        formatDate(r.ts),
-        r.articleTitle,
-        r.score,
-        r.wpm,
-        r.accuracy,
-        r.elapsed
-      ]);
-    });
-  });
-
-  // Sort by student id
-  rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-
-  const csvContent = "\uFEFF" + rows.map(r =>
-    r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
-  ).join("\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href = url;
-  a.download = `typedojo_export_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast("✅ CSV 已匯出");
 }
 
-// ── UTILS ─────────────────────────────────────────────────
 function escHtml(str) {
   return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }

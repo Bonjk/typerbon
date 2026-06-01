@@ -11,7 +11,6 @@
 </head>
 <body>
 
-<!-- Teacher Login -->
 <div id="teacher-login" class="screen active">
   <div class="login-bg"><div class="grid-lines"></div></div>
   <div class="login-card">
@@ -28,7 +27,6 @@
   </div>
 </div>
 
-<!-- Teacher Dashboard -->
 <div id="teacher-dashboard" class="screen" style="display:none">
   <nav class="navbar">
     <div class="nav-logo">🛠 教師後台</div>
@@ -38,17 +36,16 @@
   </nav>
 
   <div class="teacher-layout">
-
-    <!-- Left: Article List -->
     <div class="section-card teacher-article-panel">
       <div class="panel-header">
         <h2 class="section-title">文章列表</h2>
         <button class="btn-primary btn-sm" id="btn-add-article">＋ 新增文章</button>
       </div>
-      <div id="teacher-article-list" class="teacher-article-list"></div>
+      <div id="teacher-article-list" class="teacher-article-list">
+        <div class="loading-state">⏳ 載入中…</div>
+      </div>
     </div>
 
-    <!-- Right: Editor -->
     <div class="section-card teacher-editor-panel" id="teacher-editor" style="display:none">
       <h2 class="section-title" id="editor-title-label">新增文章</h2>
       <div class="input-group">
@@ -75,11 +72,10 @@
       <span class="input-error" id="editor-error"></span>
     </div>
 
-    <!-- Student Records Panel -->
     <div class="section-card teacher-records-panel">
       <h2 class="section-title">學生成績查詢</h2>
-      <div class="input-group" style="flex-direction:row;gap:8px;align-items:flex-end">
-        <div style="flex:1">
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="flex:1;min-width:180px">
           <label>班級座號</label>
           <input type="text" id="query-student-id" placeholder="五碼，如 80213" maxlength="5" />
         </div>
@@ -88,11 +84,10 @@
       </div>
       <div id="student-records-result" class="student-records-result"></div>
     </div>
-
   </div>
 </div>
 
-<script src="data.js"></script>
-<script src="teacher.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module" src="teacher.js"></script>
 </body>
 </html>

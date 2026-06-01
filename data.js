@@ -1,9 +1,23 @@
 /**
- * data.js — 共用資料層
- * 預設文章、localStorage 工具函式
+ * data.js — 資料層（Firebase Firestore 版本）
+ *
+ * Collections：
+ *   articles/{id}           文章
+ *   records/{studentId}/sessions/{sessionId}   成績
+ *   leaderboard/{studentId} 每個學生的最高分（供排行榜用）
  */
 
-// ── 預設文章（老師可從後台新增／刪除） ──────────────────
+// ── Firebase 初始化 ────────────────────────────────────────
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc,
+         getDocs, addDoc, updateDoc, deleteDoc,
+         setDoc, getDoc, query, orderBy, limit,
+         serverTimestamp, onSnapshot }            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const _app = initializeApp(FIREBASE_CONFIG);
+const db   = getFirestore(_app);
+
+// ── 預設文章（第一次啟動時寫入 Firestore） ─────────────────
 const DEFAULT_ARTICLES = [
   {
     id: "default-1",
@@ -31,118 +45,145 @@ const DEFAULT_ARTICLES = [
   }
 ];
 
-// ── STORAGE KEYS ────────────────────────────────────────
-const KEYS = {
-  ARTICLES:     "typedojo_articles",
-  RECORDS:      "typedojo_records",   // { [studentId]: [...sessions] }
-  TEACHER_PW:   "typedojo_teacher_pw",
-};
-
-// ── ARTICLES API ─────────────────────────────────────────
+// ── ArticleStore ───────────────────────────────────────────
 const ArticleStore = {
-  getAll() {
-    const saved = localStorage.getItem(KEYS.ARTICLES);
-    if (!saved) return [...DEFAULT_ARTICLES];
-    try {
-      const custom = JSON.parse(saved);
-      // Merge: built-in defaults not overridden, then custom
-      const customIds = new Set(custom.map(a => a.id));
-      const defaults  = DEFAULT_ARTICLES.filter(a => !customIds.has(a.id));
-      return [...defaults, ...custom];
-    } catch { return [...DEFAULT_ARTICLES]; }
+  /** 確保預設文章存在（只在第一次執行時寫入） */
+  async ensureDefaults() {
+    for (const a of DEFAULT_ARTICLES) {
+      const ref = doc(db, "articles", a.id);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, { ...a, isDefault: true, createdAt: serverTimestamp() });
+      }
+    }
   },
 
-  // Save only the *non-default* articles (custom ones)
-  _saveCustom(articles) {
-    const defaultIds = new Set(DEFAULT_ARTICLES.map(a => a.id));
-    const custom = articles.filter(a => !defaultIds.has(a.id));
-    localStorage.setItem(KEYS.ARTICLES, JSON.stringify(custom));
+  async getAll() {
+    const snap = await getDocs(query(collection(db, "articles"), orderBy("createdAt")));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 
-  add(article) {
-    const all = this.getAll();
-    article.id = "custom-" + Date.now();
-    all.push(article);
-    this._saveCustom(all);
-    return article;
+  async add(article) {
+    const ref = await addDoc(collection(db, "articles"), {
+      ...article,
+      isDefault: false,
+      createdAt: serverTimestamp()
+    });
+    return { id: ref.id, ...article };
   },
 
-  update(updatedArticle) {
-    const all = this.getAll().map(a =>
-      a.id === updatedArticle.id ? updatedArticle : a
-    );
-    this._saveCustom(all);
+  async update(article) {
+    const { id, ...data } = article;
+    await updateDoc(doc(db, "articles", id), data);
   },
 
-  delete(id) {
-    // Cannot delete default articles
-    const defaultIds = new Set(DEFAULT_ARTICLES.map(a => a.id));
-    if (defaultIds.has(id)) return false;
-    const all = this.getAll().filter(a => a.id !== id);
-    this._saveCustom(all);
+  async delete(id) {
+    const snap = await getDoc(doc(db, "articles", id));
+    if (snap.data()?.isDefault) return false;
+    await deleteDoc(doc(db, "articles", id));
     return true;
   },
 
-  isDefault(id) {
-    return DEFAULT_ARTICLES.some(a => a.id === id);
+  isDefault(article) {
+    return article?.isDefault === true;
   }
 };
 
-// ── RECORDS API ──────────────────────────────────────────
+// ── RecordStore ────────────────────────────────────────────
 const RecordStore = {
-  _load() {
-    try { return JSON.parse(localStorage.getItem(KEYS.RECORDS)) || {}; }
-    catch { return {}; }
+  /** 新增一筆練習紀錄，同時更新排行榜 */
+  async addSession(studentId, session) {
+    // 1. 寫入個人紀錄
+    await addDoc(
+      collection(db, "records", studentId, "sessions"),
+      { ...session, createdAt: serverTimestamp() }
+    );
+
+    // 2. 更新排行榜（只保留最高分）
+    const lbRef  = doc(db, "leaderboard", studentId);
+    const lbSnap = await getDoc(lbRef);
+    const prev   = lbSnap.exists() ? lbSnap.data().bestScore : 0;
+
+    if (session.score > prev) {
+      await setDoc(lbRef, {
+        studentId,
+        bestScore:   session.score,
+        bestWpm:     session.wpm,
+        bestAcc:     session.accuracy,
+        articleTitle: session.articleTitle,
+        updatedAt:   serverTimestamp()
+      });
+    }
   },
 
-  getByStudent(studentId) {
-    return this._load()[studentId] || [];
+  /** 取得某學生所有紀錄（最新在前） */
+  async getByStudent(studentId) {
+    const snap = await getDocs(
+      query(
+        collection(db, "records", studentId, "sessions"),
+        orderBy("createdAt", "desc")
+      )
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data(),
+      ts: d.data().createdAt?.toMillis?.() || d.data().ts || Date.now()
+    }));
   },
 
-  addSession(studentId, session) {
-    const all = this._load();
-    if (!all[studentId]) all[studentId] = [];
-    all[studentId].unshift(session); // newest first
-    localStorage.setItem(KEYS.RECORDS, JSON.stringify(all));
+  /** 排行榜：取前 50 名（依最高分排序） */
+  async getLeaderboard(topN = 50) {
+    const snap = await getDocs(
+      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN))
+    );
+    return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
   },
 
-  getAllStudentIds() {
-    return Object.keys(this._load());
+  /** 教師用：取得所有學生 ID */
+  async getAllStudentIds() {
+    const snap = await getDocs(collection(db, "leaderboard"));
+    return snap.docs.map(d => d.id);
   },
 
-  getAllRecords() {
-    return this._load();
+  /** 教師用：取得所有學生紀錄（用於 CSV 匯出） */
+  async getAllRecordsFlat() {
+    const ids = await this.getAllStudentIds();
+    const rows = [];
+    for (const sid of ids) {
+      const sessions = await this.getByStudent(sid);
+      sessions.forEach(s => rows.push({ studentId: sid, ...s }));
+    }
+    return rows;
   }
 };
 
-// ── TEACHER PASSWORD API ─────────────────────────────────
+// ── TeacherAuth ────────────────────────────────────────────
+// 密碼存在 Firestore settings/teacher，fallback 至 localStorage
 const TeacherAuth = {
   DEFAULT_PW: "teacher123",
 
-  getPassword() {
-    return localStorage.getItem(KEYS.TEACHER_PW) || this.DEFAULT_PW;
+  async getPassword() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "teacher"));
+      if (snap.exists() && snap.data().password) return snap.data().password;
+    } catch {}
+    return localStorage.getItem("typedojo_teacher_pw") || this.DEFAULT_PW;
   },
 
-  check(pw) {
-    return pw === this.getPassword();
+  async check(pw) {
+    return pw === await this.getPassword();
   },
 
-  setPassword(newPw) {
-    localStorage.setItem(KEYS.TEACHER_PW, newPw);
+  async setPassword(newPw) {
+    await setDoc(doc(db, "settings", "teacher"), { password: newPw });
+    localStorage.setItem("typedojo_teacher_pw", newPw);
   }
 };
 
-// ── SCORING FORMULA ──────────────────────────────────────
-/**
- * 綜合分數 = WPM × 正確率² × 100
- * 讓正確率對分數的影響大於速度（正確率 < 1 的平方會急速拉低分數）
- */
+// ── 工具函式 ───────────────────────────────────────────────
 function calcScore(wpm, accuracy) {
-  const acc = accuracy / 100; // 轉成 0~1
+  const acc = accuracy / 100;
   return Math.round(wpm * acc * acc * 100);
 }
 
-// ── UTILS ─────────────────────────────────────────────────
 function countWords(text) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -154,14 +195,13 @@ function formatDate(ts) {
 
 function validateStudentId(id) {
   if (!/^\d{5}$/.test(id)) return "請輸入五碼數字";
-  const cls    = parseInt(id.slice(0, 3), 10); // 班級 3 碼
-  const seatNo = parseInt(id.slice(3, 5), 10); // 座號 2 碼
+  const cls    = parseInt(id.slice(0, 3), 10);
+  const seatNo = parseInt(id.slice(3, 5), 10);
   if (cls < 100 || cls > 999) return "班級碼（前三碼）應為 100–999";
   if (seatNo < 1 || seatNo > 60) return "座號（後兩碼）應為 01–60";
-  return null; // valid
+  return null;
 }
 
-// Global toast helper
 function showToast(msg, duration = 2200) {
   let el = document.getElementById("toast");
   if (!el) {
@@ -173,3 +213,6 @@ function showToast(msg, duration = 2200) {
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), duration);
 }
+
+export { db, ArticleStore, RecordStore, TeacherAuth,
+         calcScore, countWords, formatDate, validateStudentId, showToast };

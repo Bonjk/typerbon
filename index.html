@@ -13,23 +13,15 @@
 
 <!-- ========== LOGIN SCREEN ========== -->
 <div id="screen-login" class="screen active">
-  <div class="login-bg">
-    <div class="grid-lines"></div>
-  </div>
+  <div class="login-bg"><div class="grid-lines"></div></div>
   <div class="login-card">
     <div class="logo-mark">⌨</div>
     <h1 class="logo-title">TypeDojo</h1>
     <p class="logo-sub">英文打字練習平台</p>
     <div class="input-group">
       <label for="student-id">班級座號</label>
-      <input
-        type="text"
-        id="student-id"
-        maxlength="5"
-        placeholder="例：80213"
-        autocomplete="off"
-        spellcheck="false"
-      />
+      <input type="text" id="student-id" maxlength="5" placeholder="例：80213"
+             autocomplete="off" spellcheck="false" />
       <span class="input-hint">班級三碼＋座號兩碼，共五位數字</span>
       <span class="input-error" id="login-error"></span>
     </div>
@@ -41,7 +33,6 @@
 <!-- ========== MAIN APP ========== -->
 <div id="screen-app" class="screen">
 
-  <!-- Navbar -->
   <nav class="navbar">
     <div class="nav-logo">⌨ TypeDojo</div>
     <div class="nav-info">
@@ -50,22 +41,21 @@
     </div>
   </nav>
 
-  <!-- Tab Bar -->
   <div class="tab-bar">
     <button class="tab active" data-tab="practice">📝 練習</button>
-    <button class="tab" data-tab="history">📊 歷史成績</button>
+    <button class="tab" data-tab="history">📊 我的成績</button>
+    <button class="tab" data-tab="leaderboard">🏆 排行榜</button>
   </div>
 
   <!-- ── TAB: PRACTICE ── -->
   <div id="tab-practice" class="tab-content active">
-
-    <!-- Article Selector -->
-    <div class="section-card article-selector">
+    <div class="section-card article-selector" id="article-selector">
       <h2 class="section-title">選擇文章</h2>
-      <div id="article-list" class="article-list"></div>
+      <div id="article-list" class="article-list">
+        <div class="loading-state">⏳ 載入文章中…</div>
+      </div>
     </div>
 
-    <!-- Typing Area -->
     <div class="section-card typing-area" id="typing-area" style="display:none">
       <div class="typing-header">
         <h2 class="section-title" id="article-title-display"></h2>
@@ -75,28 +65,16 @@
           <div class="stat-chip"><span class="stat-label">正確率</span><span id="live-acc">100%</span></div>
         </div>
       </div>
-
-      <!-- Reference Text -->
       <div class="reference-box" id="reference-box"></div>
-
-      <!-- Input -->
-      <textarea
-        id="typing-input"
-        class="typing-input"
+      <textarea id="typing-input" class="typing-input"
         placeholder="點此開始輸入……"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        spellcheck="false"
-      ></textarea>
-
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       <div class="typing-actions">
         <button class="btn-secondary" id="btn-restart">↺ 重新開始</button>
         <button class="btn-danger" id="btn-cancel">取消</button>
       </div>
     </div>
 
-    <!-- Result Card -->
     <div class="section-card result-card" id="result-card" style="display:none">
       <div class="result-header">
         <div class="result-emoji" id="result-emoji">🎉</div>
@@ -120,8 +98,6 @@
           <span class="rs-value" id="res-time">0s</span>
         </div>
       </div>
-
-      <!-- Per-letter breakdown -->
       <div class="letter-breakdown">
         <h3 class="breakdown-title">個別字母正確率</h3>
         <div id="letter-grid" class="letter-grid"></div>
@@ -132,7 +108,6 @@
           <span class="leg-item leg-none">未出現</span>
         </div>
       </div>
-
       <div class="result-actions">
         <button class="btn-primary" id="btn-retry">再試一次</button>
         <button class="btn-secondary" id="btn-choose-another">選其他文章</button>
@@ -143,15 +118,25 @@
   <!-- ── TAB: HISTORY ── -->
   <div id="tab-history" class="tab-content">
     <div class="section-card">
-      <h2 class="section-title">歷史成績</h2>
+      <h2 class="section-title">我的歷史成績</h2>
       <div id="history-summary" class="history-summary"></div>
       <div id="history-list" class="history-list"></div>
     </div>
   </div>
 
+  <!-- ── TAB: LEADERBOARD ── -->
+  <div id="tab-leaderboard" class="tab-content">
+    <div class="section-card">
+      <h2 class="section-title">🏆 全班排行榜 <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">（每人最高分）</span></h2>
+      <div id="leaderboard-list" class="leaderboard-list">
+        <div class="loading-state">⏳ 載入排行榜…</div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /screen-app -->
 
-<script src="data.js"></script>
-<script src="app.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
