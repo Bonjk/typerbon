@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TypeDojo｜教師後台</title>
+  <title>TyperBon｜教師後台</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -16,7 +16,7 @@
   <div class="login-card">
     <div class="logo-mark" style="font-size:2rem">🛠</div>
     <h1 class="logo-title">教師後台</h1>
-    <p class="logo-sub">TypeDojo 文章管理</p>
+    <p class="logo-sub">TyperBon 文章管理</p>
     <div class="input-group">
       <label for="teacher-pw">管理密碼</label>
       <input type="password" id="teacher-pw" placeholder="請輸入密碼" />
@@ -83,6 +83,19 @@
         <button class="btn-secondary btn-sm" id="btn-export-all">匯出全班 CSV</button>
       </div>
       <div id="student-records-result" class="student-records-result"></div>
+    </div>
+
+    <div class="section-card teacher-records-panel">
+      <h2 class="section-title">🏆 排行榜</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="flex:1;min-width:140px">
+          <label>班級篩選（三碼）</label>
+          <input type="text" id="lb-class-filter" placeholder="如 802，留空則查全部" maxlength="3" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-lb-query">查詢排行榜</button>
+        <button class="btn-secondary btn-sm" id="btn-lb-all">查看全部</button>
+      </div>
+      <div id="teacher-leaderboard-result" class="student-records-result"></div>
     </div>
   </div>
 </div>

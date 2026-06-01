@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 確保預設文章存在
   await ArticleStore.ensureDefaults();
 
-  const savedId = sessionStorage.getItem("typedojo_student");
+  const savedId = sessionStorage.getItem("typerbon_student");
   if (savedId) loginAs(savedId);
 
   $("btn-login").addEventListener("click", handleLogin);
@@ -58,7 +58,7 @@ function handleLogin() {
 
 function loginAs(id) {
   state.studentId = id;
-  sessionStorage.setItem("typedojo_student", id);
+  sessionStorage.setItem("typerbon_student", id);
   $("nav-student-id").textContent = `班級座號：${id}`;
   $("screen-login").classList.remove("active");
   $("screen-app").style.display = "block";
@@ -66,7 +66,7 @@ function loginAs(id) {
 }
 
 function handleLogout() {
-  sessionStorage.removeItem("typedojo_student");
+  sessionStorage.removeItem("typerbon_student");
   state.studentId = null;
   state.currentArticle = null;
   cancelSession();
@@ -325,10 +325,15 @@ async function renderLeaderboard() {
   const el = $("leaderboard-list");
   el.innerHTML = `<div class="loading-state">⏳ 載入排行榜…</div>`;
 
-  const rows = await RecordStore.getLeaderboard(50);
+  const classCode = state.studentId ? state.studentId.slice(0, 3) : null;
+  const all = await RecordStore.getAllLeaderboard();
+  const rows = classCode
+    ? all.filter(r => r.studentId && r.studentId.startsWith(classCode))
+        .map((r, i) => ({ ...r, rank: i + 1 }))
+    : all;
 
   if (!rows.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏁</div>還沒有人完成練習，成為第一名吧！</div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏁</div>同班還沒有人完成練習，成為第一名吧！</div>`;
     return;
   }
 

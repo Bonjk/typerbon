@@ -78,8 +78,6 @@ const ArticleStore = {
   },
 
   async delete(id) {
-    const snap = await getDoc(doc(db, "articles", id));
-    if (snap.data()?.isDefault) return false;
     await deleteDoc(doc(db, "articles", id));
     return true;
   },
@@ -107,6 +105,7 @@ const RecordStore = {
     if (session.score > prev) {
       await setDoc(lbRef, {
         studentId,
+        classCode:    studentId.slice(0, 3),
         bestScore:   session.score,
         bestWpm:     session.wpm,
         bestAcc:     session.accuracy,
@@ -133,6 +132,14 @@ const RecordStore = {
   async getLeaderboard(topN = 50) {
     const snap = await getDocs(
       query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN))
+    );
+    return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
+  },
+
+  /** 取得全部排行榜（教師用、班級篩選用） */
+  async getAllLeaderboard() {
+    const snap = await getDocs(
+      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"))
     );
     return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
   },
@@ -165,7 +172,7 @@ const TeacherAuth = {
       const snap = await getDoc(doc(db, "settings", "teacher"));
       if (snap.exists() && snap.data().password) return snap.data().password;
     } catch {}
-    return localStorage.getItem("typedojo_teacher_pw") || this.DEFAULT_PW;
+    return localStorage.getItem("typerbon_teacher_pw") || this.DEFAULT_PW;
   },
 
   async check(pw) {
@@ -174,7 +181,7 @@ const TeacherAuth = {
 
   async setPassword(newPw) {
     await setDoc(doc(db, "settings", "teacher"), { password: newPw });
-    localStorage.setItem("typedojo_teacher_pw", newPw);
+    localStorage.setItem("typerbon_teacher_pw", newPw);
   }
 };
 
@@ -216,3 +223,4 @@ function showToast(msg, duration = 2200) {
 
 export { db, ArticleStore, RecordStore, TeacherAuth,
          calcScore, countWords, formatDate, validateStudentId, showToast };
+

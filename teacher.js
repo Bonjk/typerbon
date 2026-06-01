@@ -22,6 +22,14 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-query-student").addEventListener("click", queryStudent);
   $("query-student-id").addEventListener("keydown", e => { if (e.key === "Enter") queryStudent(); });
   $("btn-export-all").addEventListener("click", exportAllCSV);
+  $("btn-lb-query").addEventListener("click", () => {
+    const cls = $("lb-class-filter").value.trim();
+    renderTeacherLeaderboard(cls || null);
+  });
+  $("lb-class-filter").addEventListener("keydown", e => {
+    if (e.key === "Enter") { const cls = $("lb-class-filter").value.trim(); renderTeacherLeaderboard(cls || null); }
+  });
+  $("btn-lb-all").addEventListener("click", () => renderTeacherLeaderboard(null));
 });
 
 async function handleTeacherLogin() {
@@ -48,9 +56,6 @@ async function renderTeacherArticleList() {
   list.innerHTML = articles.map(a => {
     const diffLabel = { easy: "初級", medium: "中級", hard: "高級" }[a.difficulty] || a.difficulty;
     const isDef = ArticleStore.isDefault(a);
-    const delBtn = isDef
-      ? `<button class="ta-btn-del" disabled title="預設文章無法刪除" style="opacity:.3">🗑</button>`
-      : `<button class="ta-btn-del" data-del="${escHtml(a.id)}" title="刪除">🗑</button>`;
     return `
       <div class="ta-row">
         <div style="flex:1">
@@ -62,7 +67,7 @@ async function renderTeacherArticleList() {
           </div>
         </div>
         <button class="ta-btn-edit" data-edit="${escHtml(a.id)}">編輯</button>
-        ${delBtn}
+        <button class="ta-btn-del" data-del="${escHtml(a.id)}" title="刪除">🗑</button>
       </div>`;
   }).join("");
 
@@ -151,15 +156,14 @@ async function deleteArticle(id) {
   const articles = await ArticleStore.getAll();
   const a = articles.find(x => x.id === id);
   if (!a) return;
-  if (!confirm(`確定要刪除「${a.title}」嗎？`)) return;
-  const ok = await ArticleStore.delete(id);
-  if (ok) {
-    showToast("🗑 已刪除");
-    renderTeacherArticleList();
-    if (teacherState.editingId === id) closeEditor();
-  } else {
-    showToast("預設文章無法刪除");
-  }
+  const msg = ArticleStore.isDefault(a)
+    ? `「${a.title}」是預設文章，刪除後無法還原，確定要刪除嗎？`
+    : `確定要刪除「${a.title}」嗎？`;
+  if (!confirm(msg)) return;
+  await ArticleStore.delete(id);
+  showToast("🗑 已刪除");
+  renderTeacherArticleList();
+  if (teacherState.editingId === id) closeEditor();
 }
 
 async function queryStudent() {
@@ -220,7 +224,7 @@ async function exportAllCSV() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = `typedojo_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `typerbon_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -232,6 +236,45 @@ async function exportAllCSV() {
     btn.textContent = "匯出全班 CSV";
     btn.disabled = false;
   }
+}
+
+async function renderTeacherLeaderboard(classCode) {
+  const el = $("teacher-leaderboard-result");
+  el.innerHTML = `<div class="loading-state">⏳ 載入排行榜…</div>`;
+
+  const all = await RecordStore.getAllLeaderboard();
+  const rows = classCode
+    ? all.filter(r => r.studentId && r.studentId.startsWith(classCode))
+        .map((r, i) => ({ ...r, rank: i + 1 }))
+    : all;
+
+  if (!rows.length) {
+    const msg = classCode ? `班級 ${escHtml(classCode)} 尚無成績紀錄` : "尚無任何成績";
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏁</div>${msg}</div>`;
+    return;
+  }
+
+  const title = classCode
+    ? `${escHtml(classCode)} 班排行榜（共 ${rows.length} 人）`
+    : `全部排行榜（共 ${rows.length} 人）`;
+  const medals = ["🥇","🥈","🥉"];
+  el.innerHTML = `
+    <div class="sr-header">${title}</div>
+    <div class="lb-header">
+      <span class="lb-rank">名次</span>
+      <span class="lb-id">班級座號</span>
+      <span class="lb-score">最高分</span>
+      <span class="lb-wpm">WPM</span>
+      <span class="lb-acc">正確率</span>
+    </div>
+    ${rows.map(r => `
+      <div class="lb-row">
+        <span class="lb-rank">${medals[r.rank - 1] || r.rank}</span>
+        <span class="lb-id">${escHtml(r.studentId)}</span>
+        <span class="lb-score">${r.bestScore}</span>
+        <span class="lb-wpm">${r.bestWpm}</span>
+        <span class="lb-acc">${r.bestAcc}%</span>
+      </div>`).join("")}`;
 }
 
 function escHtml(str) {
