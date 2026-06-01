@@ -199,6 +199,12 @@ const RecordStore = {
     return snap.docs.map(d => d.id);
   },
 
+  /** 取得某學生排行榜的歷史最高分（儲存前用於判斷是否突破） */
+  async getBestScore(studentId) {
+    const snap = await getDoc(doc(db, "leaderboard", studentId));
+    return snap.exists() ? (snap.data().bestScore || 0) : 0;
+  },
+
   /** 教師用：取得所有學生紀錄（用於 CSV 匯出） */
   async getAllRecordsFlat() {
     const ids = await this.getAllStudentIds();
@@ -235,9 +241,15 @@ const TeacherAuth = {
 };
 
 // ── 工具函式 ───────────────────────────────────────────────
-function calcScore(wpm, accuracy) {
-  const acc = accuracy / 100;
-  return Math.round(wpm * acc * acc * 100);
+function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium') {
+  const D = ({ easy: 0.90, medium: 0.95, hard: 1.00 })[difficulty] ?? 1.00;
+  const aScore = Math.pow(netAcc / 100, 2) * 100;
+  const w = wpm >= 30 ? 100
+    : wpm >= 20 ? 80 + 2 * (wpm - 20)
+    : wpm >= 10 ? 60 + 2 * (wpm - 10)
+    : 6 * wpm;
+  const g = Math.pow(Math.min(grossAcc, 100) / 100, 0.3);
+  return Math.round((aScore * 0.649 + w * 0.351) * g * D * 100);
 }
 
 function countWords(text) {

@@ -16,6 +16,7 @@ const state = {
   isFinished: false,
   letterStats: {},
   totalTyped: 0,
+  grossKeystrokes: 0,
   leaderboardMode: "class",
 };
 
@@ -41,6 +42,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("btn-lb-all").addEventListener("click",   () => setLbMode("all"));
 
   $("typing-input").addEventListener("input", handleTypingInput);
+  $("typing-input").addEventListener("keydown", e => {
+    if (state.isFinished || !state.currentArticle) return;
+    if (e.repeat || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    state.grossKeystrokes++;
+  });
   $("btn-restart").addEventListener("click", restartSession);
   $("btn-cancel").addEventListener("click", cancelSession);
   $("btn-retry").addEventListener("click", () => showTypingArea(state.currentArticle));
@@ -139,6 +145,7 @@ function resetSessionState() {
   state.isFinished = false;
   state.letterStats = {};
   state.totalTyped = 0;
+  state.grossKeystrokes = 0;
 }
 
 function renderReference(text, cursorPos) {
@@ -217,36 +224,61 @@ async function finishSession(typed) {
   state.isRunning  = false;
   state.isFinished = true;
 
-  const target  = state.currentArticle.content;
-  const elapsed = state.elapsed || (Date.now() - state.startTime) / 1000;
-  const wpm     = Math.round(countWords(target) / (elapsed / 60));
-  const correct = [...typed].filter((c, i) => c === target[i]).length;
-  const acc     = Math.round(correct / target.length * 100);
-  const score   = calcScore(wpm, acc);
+  const target   = state.currentArticle.content;
+  const elapsed  = state.elapsed || (Date.now() - state.startTime) / 1000;
+  const wpm      = Math.round(countWords(target) / (elapsed / 60));
+  const correct  = [...typed].filter((c, i) => c === target[i]).length;
+  const acc      = Math.round(correct / target.length * 100);
+  const grossAcc = state.grossKeystrokes > 0
+    ? Math.min(100, Math.round(correct / state.grossKeystrokes * 100))
+    : 100;
+  const score = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || 'medium');
 
   const session = {
     ts: Date.now(),
-    articleId: state.currentArticle.id,
+    articleId:    state.currentArticle.id,
     articleTitle: state.currentArticle.title,
-    wpm, accuracy: acc, score,
+    wpm, accuracy: acc, grossAccuracy: grossAcc, score,
     elapsed: Math.round(elapsed),
     letterStats: { ...state.letterStats },
   };
 
-  // Save to Firestore (non-blocking)
-  RecordStore.addSession(state.studentId, session)
-    .catch(() => showToast("成績儲存失敗，請檢查網路連線"));
-
   showResults(session);
+
+  // Get old best before saving (for personal-best check)
+  const oldBest = await RecordStore.getBestScore(state.studentId).catch(() => 0);
+
+  try {
+    await RecordStore.addSession(state.studentId, session);
+  } catch {
+    showToast("成績儲存失敗，請檢查網路連線");
+    return;
+  }
+
+  const isPersonalBest = session.score > oldBest;
+
+  try {
+    const lb        = await RecordStore.getAllLeaderboard();
+    const cc        = state.studentId.slice(0, 3);
+    const classList = lb.filter(r => r.studentId?.startsWith(cc));
+    const classRank = classList.findIndex(r => r.studentId === state.studentId) + 1;
+    const globalRank = lb.findIndex(r => r.studentId === state.studentId) + 1;
+
+    if (isPersonalBest && ((classRank > 0 && classRank <= 3) || (globalRank > 0 && globalRank <= 10))) {
+      triggerFireworks();
+    } else if (isPersonalBest) {
+      triggerConfetti();
+    }
+  } catch { /* 網路異常時略過慶祝動畫 */ }
 }
 
 function showResults(session) {
   $("typing-area").style.display = "none";
   $("result-card").style.display = "block";
 
-  const grade = session.score >= 6000 ? "優秀"
-    : session.score >= 3000 ? "不錯"
-    : session.score >= 1000 ? "繼續加油" : "多加練習";
+  const grade = session.score >= 8500 ? "優秀"
+    : session.score >= 7000 ? "不錯"
+    : session.score >= 5500 ? "繼續加油" : "多加練習";
   $("result-emoji").textContent = grade;
   $("res-score").textContent = session.score;
   $("res-wpm").textContent   = session.wpm + " WPM";
@@ -370,6 +402,97 @@ async function renderLeaderboard() {
           <span class="lb-acc">${r.bestAcc}%</span>
         </div>`;
     }).join("")}`;
+}
+
+// ── CELEBRATIONS ──────────────────────────────────────────
+function triggerFireworks() {
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;";
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  const COLORS = ["#ff6b6b","#ffd93d","#6bcb77","#4d96ff","#ff922b","#cc5de8","#f783ac"];
+  const particles = [];
+
+  function burst(x) {
+    const y     = canvas.height * (0.15 + Math.random() * 0.35);
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    for (let i = 0; i < 45; i++) {
+      const angle = (i / 45) * Math.PI * 2;
+      const speed = 2 + Math.random() * 5;
+      particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        alpha: 1, color, r: 2 + Math.random() * 2 });
+    }
+  }
+
+  const timeouts = [0, 380, 700, 1050, 1400, 1750].map(d =>
+    setTimeout(() => burst(canvas.width * (0.15 + Math.random() * 0.7)), d)
+  );
+
+  const t0 = Date.now();
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.alpha -= 0.013;
+      if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle   = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (Date.now() - t0 < 4200) requestAnimationFrame(draw);
+    else { timeouts.forEach(clearTimeout); canvas.remove(); }
+  })();
+}
+
+function triggerConfetti() {
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9998;";
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  const COLORS = ["#ff6b6b","#ffd93d","#6bcb77","#4d96ff","#ff922b","#cc5de8","#f783ac"];
+  const pieces = Array.from({ length: 90 }, (_, i) => {
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
+    const speed = 5 + Math.random() * 9;
+    return {
+      x: canvas.width / 2 + (Math.random() - 0.5) * 80,
+      y: canvas.height * 0.55,
+      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      alpha: 1, color: COLORS[i % COLORS.length],
+      w: 7 + Math.random() * 5, h: 4 + Math.random() * 3,
+      rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 0.28,
+    };
+  });
+
+  const t0 = Date.now();
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    for (const p of pieces) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.20;
+      p.rot += p.rotV; p.alpha -= 0.011;
+      if (p.alpha <= 0) continue;
+      alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle   = p.color;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive && Date.now() - t0 < 3200) requestAnimationFrame(draw);
+    else canvas.remove();
+  })();
 }
 
 // ── UTILS ─────────────────────────────────────────────────
