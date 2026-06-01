@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-export-all").addEventListener("click", exportAllCSV);
 
   $("btn-change-pw").addEventListener("click", changePassword);
+  $("btn-delete-student-records").addEventListener("click", deleteStudentRecords);
   $("btn-start-exam").addEventListener("click", startExam);
 
   $("btn-lb-query").addEventListener("click", () => {
@@ -347,6 +348,29 @@ async function exportAllCSV() {
   } finally {
     btn.textContent = "匯出 CSV";
     btn.disabled = false;
+  }
+}
+
+// ── DELETE STUDENT ────────────────────────────────────────
+async function deleteStudentRecords() {
+  const id    = $("delete-student-id").value.trim();
+  const errEl = $("delete-student-error");
+  if (!/^\d{5}$/.test(id)) { errEl.textContent = "請輸入五碼數字班級座號"; return; }
+  if (!confirm(`確定要刪除 ${id} 的所有練習紀錄？此操作無法還原。`)) return;
+  errEl.textContent = "";
+  const btn = $("btn-delete-student-records");
+  btn.disabled = true;
+  btn.textContent = "刪除中...";
+  try {
+    await RecordStore.deleteStudent(id);
+    showToast(`${id} 的紀錄已全部刪除`);
+    $("delete-student-id").value = "";
+    teacherState.leaderboardCache = null;
+  } catch (e) {
+    errEl.textContent = "刪除失敗：" + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "刪除全部紀錄";
   }
 }
 

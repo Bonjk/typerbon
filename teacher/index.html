@@ -144,6 +144,19 @@
   <!-- ── TAB: 設定 ── -->
   <div id="teacher-tab-settings" class="tab-content">
     <div class="section-card" style="max-width:600px">
+      <h2 class="section-title">刪除學生紀錄</h2>
+      <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:16px">清除指定學生的所有練習紀錄與排行榜資料，此操作無法還原。</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="flex:1;min-width:200px">
+          <label>班級座號</label>
+          <input type="text" id="delete-student-id" placeholder="五碼，如 80213" maxlength="5" />
+        </div>
+        <button class="btn-danger btn-sm" id="btn-delete-student-records" style="margin-bottom:1px">刪除全部紀錄</button>
+      </div>
+      <span class="input-error" id="delete-student-error"></span>
+    </div>
+
+    <div class="section-card" style="max-width:600px;margin-top:20px">
       <h2 class="section-title">修改密碼</h2>
       <div style="display:flex;flex-direction:column;gap:16px;max-width:400px">
         <div class="input-group">

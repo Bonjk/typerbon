@@ -205,6 +205,13 @@ const RecordStore = {
     return snap.exists() ? (snap.data().bestScore || 0) : 0;
   },
 
+  /** 教師用：刪除某學生所有練習紀錄與排行榜資料 */
+  async deleteStudent(studentId) {
+    const sessSnap = await getDocs(collection(db, "records", studentId, "sessions"));
+    await Promise.all(sessSnap.docs.map(d => deleteDoc(d.ref)));
+    await deleteDoc(doc(db, "leaderboard", studentId));
+  },
+
   /** 教師用：取得所有學生紀錄（用於 CSV 匯出） */
   async getAllRecordsFlat() {
     const ids = await this.getAllStudentIds();
