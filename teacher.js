@@ -448,12 +448,14 @@ async function loadExamTab() {
   const articles = await ArticleStore.getAll();
   teacherState.examArticles = articles;
 
-  const sel = $("exam-article-select");
-  sel.innerHTML = `<option value="">請選擇...</option>` +
-    articles.map(a => {
-      const d = { easy: "初級", medium: "中級", hard: "高級" }[a.difficulty] || a.difficulty;
-      return `<option value="${escHtml(a.id)}">[${d}] ${escHtml(a.title)}</option>`;
-    }).join("");
+  const byDiff = d => articles.filter(a => a.difficulty === d);
+  const fillSelect = (id, list) => {
+    $(id).innerHTML = `<option value="">請選擇...</option>` +
+      list.map(a => `<option value="${escHtml(a.id)}">${escHtml(a.title)}（${countWords(a.content)} 字）</option>`).join("");
+  };
+  fillSelect("exam-article-easy",   byDiff("easy"));
+  fillSelect("exam-article-medium", byDiff("medium"));
+  fillSelect("exam-article-hard",   byDiff("hard"));
 
   const exam = await ExamStore.getCurrent();
   renderExamCurrentStatus(exam);
@@ -470,12 +472,18 @@ function renderExamCurrentStatus(exam) {
   }
 
   const isActive = exam.status === "active";
+  const arts = exam.articles || {};
+  const artInfo = ["easy", "medium", "hard"].map(d => {
+    const label = { easy: "初級", medium: "中級", hard: "高級" }[d];
+    return arts[d] ? `${label}: ${escHtml(arts[d].title)}` : "";
+  }).filter(Boolean).join("　");
+
   panel.style.display = "block";
   panel.innerHTML = `
     <div class="exam-status-bar">
       <span class="badge badge-${isActive ? "hard" : "medium"}">${isActive ? "進行中" : "已結束"}</span>
       <strong>${escHtml(exam.classCode)} 班</strong>
-      <span style="color:var(--text-muted)">— ${escHtml(exam.articleTitle)}</span>
+      <span style="color:var(--text-muted);font-size:.82rem">${artInfo}</span>
       ${isActive
         ? `<button class="btn-danger btn-sm" id="btn-end-exam" style="margin-left:auto">結束考試</button>`
         : ""}
@@ -503,44 +511,64 @@ async function loadExamResults(examId) {
     return;
   }
 
+  const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+  const cols = "grid-template-columns:52px 1fr 52px 90px 80px 70px 70px 52px";
+
   container.innerHTML = `
     <div class="sr-header">考試成績 — 共 ${results.length} 人提交</div>
-    <div class="lb-header">
-      <span class="lb-rank">名次</span>
-      <span class="lb-id">班級座號</span>
-      <span class="lb-score">分數</span>
-      <span class="lb-wpm">WPM</span>
-      <span class="lb-acc">淨正確率</span>
-      <span class="lb-acc">完成度</span>
+    <div class="lb-header" style="${cols}">
+      <span>名次</span><span>班級座號</span><span>難度</span>
+      <span>分數</span><span>WPM</span><span>淨正確率</span><span>完成度</span><span>操作</span>
     </div>
     ${results.map(r => `
-      <div class="lb-row">
+      <div class="lb-row" style="${cols}">
         <span class="lb-rank">${r.rank}</span>
         <span class="lb-id">${escHtml(r.studentId)}</span>
+        <span style="font-size:.78rem;color:var(--text-muted)">${diffLabel[r.difficulty] || "—"}</span>
         <span class="lb-score">${r.score}</span>
         <span class="lb-wpm">${r.wpm} WPM</span>
         <span class="lb-acc">${r.accuracy}%</span>
         <span class="lb-acc">${r.completion}%</span>
+        <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="清除成績，允許重考">重考</button>
       </div>`).join("")}`;
+
+  container.querySelectorAll("[data-retake]").forEach(btn =>
+    btn.addEventListener("click", () => retakeStudent(examId, btn.dataset.retake)));
+}
+
+async function retakeStudent(examId, studentId) {
+  if (!confirm(`確定要允許 ${studentId} 重新考試？現有成績將被清除。`)) return;
+  try {
+    await ExamStore.resetStudentResult(examId, studentId);
+    showToast(`${studentId} 可以重新考試了`);
+    loadExamResults(examId);
+  } catch(e) {
+    showToast("操作失敗：" + e.message);
+  }
 }
 
 async function startExam() {
   const classCode = $("exam-class-code").value.trim();
-  const articleId = $("exam-article-select").value;
+  const easyId    = $("exam-article-easy").value;
+  const mediumId  = $("exam-article-medium").value;
+  const hardId    = $("exam-article-hard").value;
   const errEl     = $("exam-start-error");
 
   if (!/^\d{3}$/.test(classCode)) { errEl.textContent = "請輸入三碼數字班級代碼"; return; }
-  if (!articleId)                  { errEl.textContent = "請選擇考試文章"; return; }
+  if (!easyId)   { errEl.textContent = "請選擇初級文章"; return; }
+  if (!mediumId) { errEl.textContent = "請選擇中級文章"; return; }
+  if (!hardId)   { errEl.textContent = "請選擇高級文章"; return; }
   errEl.textContent = "";
 
-  const article = teacherState.examArticles?.find(a => a.id === articleId);
-  if (!article) { errEl.textContent = "找不到文章資料，請重新整理頁面"; return; }
+  const find = id => teacherState.examArticles?.find(a => a.id === id);
+  const easy = find(easyId), medium = find(mediumId), hard = find(hardId);
+  if (!easy || !medium || !hard) { errEl.textContent = "找不到文章資料，請重新整理頁面"; return; }
 
   const btn = $("btn-start-exam");
   btn.disabled = true;
   btn.textContent = "開始中...";
   try {
-    await ExamStore.start(classCode, article);
+    await ExamStore.start(classCode, { easy, medium, hard });
     showToast(`${classCode} 班考試已開始`);
     $("exam-class-code").value = "";
     loadExamTab();

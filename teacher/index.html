@@ -183,16 +183,26 @@
       <div id="exam-current-panel" style="display:none;margin-bottom:20px"></div>
 
       <div id="exam-new-form">
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
           <div class="input-group" style="min-width:140px">
             <label>考試班級（三碼）</label>
             <input type="text" id="exam-class-code" maxlength="3" placeholder="如 802" />
           </div>
-          <div class="input-group" style="flex:1;min-width:240px">
-            <label>考試文章</label>
-            <select id="exam-article-select"><option value="">請先切換至此頁載入...</option></select>
-          </div>
           <button class="btn-primary btn-sm" id="btn-start-exam" style="margin-bottom:1px">開始考試</button>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="input-group" style="flex:1;min-width:200px">
+            <label>初級文章</label>
+            <select id="exam-article-easy"><option value="">請先切換至此頁...</option></select>
+          </div>
+          <div class="input-group" style="flex:1;min-width:200px">
+            <label>中級文章</label>
+            <select id="exam-article-medium"><option value="">請先切換至此頁...</option></select>
+          </div>
+          <div class="input-group" style="flex:1;min-width:200px">
+            <label>高級文章</label>
+            <select id="exam-article-hard"><option value="">請先切換至此頁...</option></select>
+          </div>
         </div>
         <span class="input-error" id="exam-start-error"></span>
       </div>

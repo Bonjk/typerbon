@@ -45,6 +45,42 @@
     <button class="btn-primary btn-sm" id="btn-join-exam">加入考試</button>
   </div>
 
+  <!-- 考試難度選擇 -->
+  <div id="exam-article-overlay" class="exam-modal-overlay" style="display:none">
+    <div class="exam-modal">
+      <h2>選擇考試難度</h2>
+      <div id="exam-article-choices" class="exam-article-choices"></div>
+      <button class="exam-modal-cancel" id="btn-exam-article-cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- 考試規則確認 -->
+  <div id="exam-confirm-overlay" class="exam-modal-overlay" style="display:none">
+    <div class="exam-modal">
+      <h2>考試規則</h2>
+      <ol class="exam-rules-list">
+        <li>考試時間為十分鐘，請在時間內完成一篇文章。</li>
+        <li>可以自由選擇難易度，但最高分會受到影響（簡單 ×0.90、中等 ×0.95、困難 ×1.00）。</li>
+        <li>系統會自行計算成績並登記，時限內可以多次嘗試，記錄最高分。</li>
+        <li>正確率是最重要的、其次是速度，計算上大約是 65 : 35。</li>
+        <li>有任何突發情況舉手反映。</li>
+        <li>為了確定你有看到這裡，請選擇紫色的確定考試。</li>
+      </ol>
+      <label class="exam-rules-check-row">
+        <input type="checkbox" id="exam-rules-check" />
+        我已閱讀並了解以上規則
+      </label>
+      <div class="exam-confirm-btns">
+        <button class="btn-exam-confirm btn-confirm-red"    disabled>確定考試</button>
+        <button class="btn-exam-confirm btn-confirm-orange" disabled>確定考試</button>
+        <button class="btn-exam-confirm btn-confirm-purple" disabled id="btn-confirm-purple">確定考試</button>
+        <button class="btn-exam-confirm btn-confirm-green"  disabled>確定考試</button>
+        <button class="btn-exam-confirm btn-confirm-blue"   disabled>確定考試</button>
+      </div>
+      <button class="exam-modal-cancel" id="btn-exam-confirm-cancel">取消</button>
+    </div>
+  </div>
+
   <div class="tab-bar">
     <button class="tab active" data-tab="practice">練習</button>
     <button class="tab" data-tab="history">我的成績</button>

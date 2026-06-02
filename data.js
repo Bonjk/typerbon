@@ -304,17 +304,19 @@ const ExamStore = {
     return d.id ? d : null;
   },
 
-  /** 開始考試：傳入完整 article 物件避免重複讀取 Firestore */
-  async start(classCode, article) {
+  /** 開始考試：傳入三篇文章 { easy, medium, hard } */
+  async start(classCode, articles) {
     const id = `exam_${Date.now()}`;
+    const pack = (a) => ({ id: a.id, title: a.title, content: a.content, difficulty: a.difficulty });
     await setDoc(doc(db, "settings", "activeExam"), {
       id, classCode,
-      articleId:    article.id,
-      articleTitle: article.title,
-      content:      article.content,
-      difficulty:   article.difficulty || "medium",
-      status:       "active",
-      startedAt:    serverTimestamp(),
+      articles: {
+        easy:   pack(articles.easy),
+        medium: pack(articles.medium),
+        hard:   pack(articles.hard),
+      },
+      status:    "active",
+      startedAt: serverTimestamp(),
     });
     return id;
   },
@@ -324,11 +326,17 @@ const ExamStore = {
     await updateDoc(doc(db, "settings", "activeExam"), { status: "ended" });
   },
 
-  /** 學生提交成績 */
+  /** 學生提交成績（僅保留最高分） */
   async submitResult(examId, studentId, result) {
-    await setDoc(doc(db, "exams", examId, "results", studentId), {
-      ...result, submittedAt: serverTimestamp(),
-    });
+    const ref  = doc(db, "exams", examId, "results", studentId);
+    const snap = await getDoc(ref);
+    if (snap.exists() && (snap.data().score || 0) >= result.score) return;
+    await setDoc(ref, { ...result, submittedAt: serverTimestamp() });
+  },
+
+  /** 教師清除指定學生的考試成績，允許重考 */
+  async resetStudentResult(examId, studentId) {
+    await deleteDoc(doc(db, "exams", examId, "results", studentId));
   },
 
   /** 取得該場考試所有成績（依分數排序） */
