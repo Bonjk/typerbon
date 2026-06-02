@@ -68,12 +68,22 @@ function switchTeacherTab(name) {
 async function handleTeacherLogin() {
   const pw = $("teacher-pw").value;
   if (!pw) { $("teacher-login-error").textContent = "請輸入密碼"; return; }
-  const ok = await TeacherAuth.check(pw);
-  if (!ok) { $("teacher-login-error").textContent = "密碼錯誤"; return; }
-  $("teacher-login-error").textContent = "";
-  $("teacher-login").classList.remove("active");
-  $("teacher-dashboard").style.display = "block";
-  switchTeacherTab("articles");
+
+  const btn = $("btn-teacher-login");
+  btn.disabled = true;
+  btn.textContent = "驗證中...";
+
+  try {
+    const ok = await TeacherAuth.check(pw);
+    if (!ok) { $("teacher-login-error").textContent = "密碼錯誤"; return; }
+    $("teacher-login-error").textContent = "";
+    $("teacher-login").classList.remove("active");
+    $("teacher-dashboard").style.display = "block";
+    switchTeacherTab("articles");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "進入後台";
+  }
 }
 
 // ── ARTICLES ───────────────────────────────────────────────
