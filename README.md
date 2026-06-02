@@ -1,11 +1,28 @@
 # TyperBon
 
-TyperBon 是一個打字練習平台，學生以班級座號登入後可練習老師指定的文章，成績自動記錄並顯示同班排行榜。教師後台可管理文章、查詢學生成績、依班級篩選排行榜，並匯出 CSV。
+TyperBon 是一個打字練習平台，學生以班級座號登入後可練習老師指定的文章，成績自動記錄並顯示同班排行榜。教師後台可管理文章、開啟考試模式、查詢學生成績，並匯出 CSV。
 
 ## 功能概覽
 
-- **學生端**：班級座號登入（前三碼班級 + 後兩碼座號）、打字練習、個人歷史成績、同班排行榜
-- **教師後台**：文章新增 / 編輯 / 刪除（含預設文章）、個別學生查詢、班級排行榜、全班 CSV 匯出
+### 學生端
+- 班級座號登入（前三碼班級 + 後兩碼座號）
+- 文章依難度分為三區塊（初級 / 中級 / 高級），考試用文章標有紫色「考試」標籤
+- 打字練習：即時 WPM、正確率、游標追蹤；文章較長時可上下捲動
+- 字型大小選擇（小 / 中 / 大 / 特大），設定存於 localStorage
+- 個人歷史成績、字母正確率分析
+- 同班 / 全體排行榜切換
+
+### 考試模式
+- 老師在後台開啟考試並指定三種難度文章各一篇
+- 學生看到考試橫幅後點「加入考試」，選擇難度 → 確認規則（須選紫色按鈕）→ 開始計時
+- 十分鐘內可多次嘗試，系統保留最高分；時限內可隨時切換文章重試
+- 考試成績不進入練習排行榜
+
+### 教師後台
+- 文章管理：新增 / 編輯 / 刪除（預設文章亦可刪除）
+- 考試管理：選擇三種難度文章各一開始考試、查看即時成績、結束考試、個別學生重設
+- 成績查詢：輸入五碼座號查詢；排行榜可依班級篩選或查看全體；CSV 匯出
+- 設定：修改後台密碼、刪除指定學生全部練習紀錄
 
 ## 專案結構
 
@@ -14,10 +31,9 @@ typerbon/
 ├── index.html              # 學生端主頁（URL: /）
 ├── teacher/
 │   └── index.html          # 教師後台（URL: /teacher/）
-├── teacher.html            # 舊連結相容（自動跳轉至 /teacher/）
 ├── app.js                  # 學生端邏輯
 ├── teacher.js              # 教師後台邏輯
-├── data.js                 # Firebase 資料層
+├── data.js                 # Firebase 資料層（ArticleStore / RecordStore / ExamStore）
 ├── firebase-config.js      # Firebase 設定（需自行填入）
 └── style.css               # 樣式
 ```
@@ -59,7 +75,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if true;
     }
-    match /leaderboard/{studentId} {
+    match /leaderboard/{id} {
       allow read: if true;
       allow write: if true;
     }
@@ -74,7 +90,7 @@ service cloud.firestore {
 ### 4. 部署至 GitHub Pages
 
 1. 將專案推送至 GitHub 公開 repo
-2. 前往 repo **Settings → Pages**，選擇 `main` branch，根目錄（`/`）
+2. 前往 repo **Settings → Pages**，選擇 `master` branch，根目錄（`/`）
 3. 幾分鐘後即可透過 `https://<帳號>.github.io/<repo名稱>/` 訪問
 
 ## 使用說明
@@ -83,34 +99,63 @@ service cloud.firestore {
 
 - 以五碼數字登入，格式：`班級三碼 + 座號兩碼`（例：`80213` = 802 班 13 號）
 - 座號範圍：01–60；班級範圍：100–999
-- 排行榜只顯示同班同學（相同前三碼）
+- 排行榜只顯示同班同學（相同前三碼），可切換查看全體
 
 ### 教師後台
 
-- 網址：`https://<帳號>.github.io/<repo名稱>/teacher/`（不需要 .html）
+- 網址：`https://<帳號>.github.io/<repo名稱>/teacher/`
 - 預設密碼：`teacher123`（可在後台「設定」分頁修改）
-- 文章管理：可新增、編輯所有文章；預設文章亦可刪除，刪除前會出現確認提示
-- 成績查詢：輸入五碼座號查詢個別學生；排行榜可依三碼班級篩選或查看全部
-- CSV 匯出包含所有學生的完整練習紀錄
+- 考試用文章（`isExam: true`）也可當一般練習文章使用
+- 考試成績存於 `leaderboard/exam_{examId}__{studentId}`，不影響練習排行榜
 
 ## 分數計算公式
 
+### 練習模式（0–20000 分）
+
 ```
-分數 = WPM × (正確率 / 100)² × 100
+分數 = (正確率分 × 0.649 + 速度分 × 0.351) × 毛正確率因子 × 難度係數 × 完成度係數
 ```
+
+- **正確率分**：`(淨正確率 / 100)² × 100`
+- **速度分**：WPM 30 以上 = 100；20–30 線性 80–100；10–20 線性 60–80；10 以下按比例
+- **毛正確率因子**：`(毛正確率 / 100) ^ 0.3`
+- **難度係數**：初級 0.90、中級 0.95、高級 1.00
+- **完成度係數**：依完成時間計算，參考時間 15 WPM，範圍 1–200
+
+### 考試模式（0–100 分）
+
+完成度係數改為 `已輸入字數 / 文章總字數`（0–1），其餘公式相同。  
+分數等級：≥85 優秀、≥70 不錯、≥55 繼續加油。
 
 ## Firestore 資料結構
 
 ```
 articles/{id}
-  title, difficulty (easy/medium/hard), content, isDefault, createdAt
+  title, difficulty (easy/medium/hard), content
+  isDefault, isExam, createdAt
 
 records/{studentId}/sessions/{sessionId}
-  ts, articleId, articleTitle, wpm, accuracy, score, elapsed, letterStats, createdAt
+  ts, articleId, articleTitle, wpm, accuracy, score, elapsed
+  letterStats, createdAt
 
-leaderboard/{studentId}
-  studentId, classCode, bestScore, bestWpm, bestAcc, articleTitle, updatedAt
+leaderboard/{studentId}                      # 練習最高分
+  studentId, classCode, bestScore, bestWpm
+  bestAcc, articleTitle, updatedAt
+
+leaderboard/exam_{examId}__{studentId}       # 考試成績
+  examId, studentId, score, wpm, accuracy
+  difficulty, articleTitle, isExamResult
+  reset (true = 已被老師重設)
 
 settings/teacher
   password
+
+settings/activeExam
+  id, classCode, status (active/ended)
+  articles: { easy, medium, hard }
+    → { id, title, content, difficulty }
+  startedAt
+
+settings/seeded
+  version (目前為 3), seededAt
 ```
