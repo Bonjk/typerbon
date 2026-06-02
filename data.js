@@ -230,11 +230,16 @@ const TeacherAuth = {
   DEFAULT_PW: "teacher123",
 
   async getPassword() {
+    const cached = localStorage.getItem("typerbon_teacher_pw");
+    if (cached) return cached;
     try {
       const snap = await getDoc(doc(db, "settings", "teacher"));
-      if (snap.exists() && snap.data().password) return snap.data().password;
+      if (snap.exists() && snap.data().password) {
+        localStorage.setItem("typerbon_teacher_pw", snap.data().password);
+        return snap.data().password;
+      }
     } catch {}
-    return localStorage.getItem("typerbon_teacher_pw") || this.DEFAULT_PW;
+    return this.DEFAULT_PW;
   },
 
   async check(pw) {
