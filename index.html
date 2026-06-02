@@ -106,6 +106,13 @@
           <div class="stat-chip" id="exam-time-chip" style="display:none"><span class="stat-label">剩餘</span><span id="exam-countdown">10:00</span></div>
         </div>
       </div>
+      <div class="font-size-controls">
+        <span class="fs-label">字型大小</span>
+        <button class="fs-btn" data-size="sm">小</button>
+        <button class="fs-btn active" data-size="md">中</button>
+        <button class="fs-btn" data-size="lg">大</button>
+        <button class="fs-btn" data-size="xl">特大</button>
+      </div>
       <div class="reference-box" id="reference-box"></div>
       <textarea id="typing-input" class="typing-input"
         placeholder="點此開始輸入……"
@@ -120,7 +127,7 @@
     <div class="section-card result-card" id="result-card" style="display:none">
       <div class="result-header">
         <div class="result-emoji" id="result-emoji"></div>
-        <h2 class="result-title">練習完成！</h2>
+        <h2 class="result-title" id="result-title">練習完成！</h2>
       </div>
       <div class="result-stats">
         <div class="result-stat primary">

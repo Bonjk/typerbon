@@ -386,9 +386,42 @@ body {
   line-height: 1.85;
   letter-spacing: .03em;
   margin-bottom: 14px;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: break-word;
   user-select: none;
 }
+
+/* Font size controls */
+.font-size-controls {
+  display: flex; gap: 5px; align-items: center;
+  margin-bottom: 10px;
+}
+.fs-label {
+  font-size: 0.75rem; color: var(--text-muted);
+  margin-right: 4px; white-space: nowrap;
+}
+.fs-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  transition: color .15s, border-color .15s;
+}
+.fs-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.fs-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(245,200,66,.08); }
+
+/* Font size variants (applied via data-font-size on body) */
+body[data-font-size="sm"] .reference-box,
+body[data-font-size="sm"] .typing-input { font-size: 13px; }
+/* md = default (1rem ≈ 15px), no override */
+body[data-font-size="lg"] .reference-box,
+body[data-font-size="lg"] .typing-input { font-size: 17px; }
+body[data-font-size="xl"] .reference-box,
+body[data-font-size="xl"] .typing-input { font-size: 19px; }
 
 /* Char highlighting states */
 .char-default  { color: var(--text-dim); }

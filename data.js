@@ -200,10 +200,10 @@ const RecordStore = {
       .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
-  /** 教師用：取得所有學生 ID */
+  /** 教師用：取得所有學生 ID（排除考試成績記錄） */
   async getAllStudentIds() {
     const snap = await getDocs(collection(db, "leaderboard"));
-    return snap.docs.map(d => d.id);
+    return snap.docs.filter(d => !d.data().isExamResult).map(d => d.id);
   },
 
   /** 取得某學生排行榜的歷史最高分（儲存前用於判斷是否突破） */

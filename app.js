@@ -48,6 +48,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("btn-lb-class").addEventListener("click", () => setLbMode("class"));
   $("btn-lb-all").addEventListener("click",   () => setLbMode("all"));
 
+  document.querySelectorAll(".fs-btn").forEach(btn =>
+    btn.addEventListener("click", () => applyFontSize(btn.dataset.size)));
+  initFontSize();
+
   $("typing-input").addEventListener("paste",   e => e.preventDefault());
   $("typing-input").addEventListener("input", handleTypingInput);
   $("typing-input").addEventListener("keydown", e => {
@@ -323,6 +327,8 @@ async function finishSession(typed) {
 function showResults(session) {
   $("typing-area").style.display = "none";
   $("result-card").style.display = "block";
+  $("result-title").textContent  = "練習完成！";
+  $("res-completion-row").style.display = "none";
 
   const grade = session.score >= 8500 ? "優秀"
     : session.score >= 7000 ? "不錯"
@@ -589,8 +595,9 @@ async function submitExam(typed, isFinal = false) {
   const acc        = submitted.length > 0 ? Math.round(correct / submitted.length * 100) : 0;
   const grossAcc   = state.grossKeystrokes > 0
     ? Math.min(100, Math.round(correct / state.grossKeystrokes * 100)) : 0;
-  const completion = Math.round(submitted.length / target.length * 100);
-  const score      = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || "medium", completion);
+  const completion = Math.round(submitted.length / target.length * 100); // 0-100，供顯示用
+  const score      = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || "medium",
+                               submitted.length / target.length); // 0-1 係數，分數範圍 0-100
 
   const result = {
     studentId: state.studentId,
@@ -605,7 +612,8 @@ async function submitExam(typed, isFinal = false) {
   // Show results
   $("typing-area").style.display = "none";
   $("result-card").style.display = "block";
-  const grade = score >= 8500 ? "優秀" : score >= 7000 ? "不錯" : score >= 5500 ? "繼續加油" : "多加練習";
+  $("result-title").textContent  = "考試完成！";
+  const grade = score >= 85 ? "優秀" : score >= 70 ? "不錯" : score >= 55 ? "繼續加油" : "多加練習";
   $("result-emoji").textContent     = grade + "（考試）";
   $("res-score").textContent        = score;
   $("res-wpm").textContent          = wpm + " WPM";
@@ -733,6 +741,17 @@ function triggerConfetti() {
     if (alive && Date.now() - t0 < 3200) requestAnimationFrame(draw);
     else canvas.remove();
   })();
+}
+
+// ── FONT SIZE ─────────────────────────────────────────────
+function initFontSize() {
+  applyFontSize(localStorage.getItem("typerbon_font_size") || "md");
+}
+function applyFontSize(size) {
+  document.body.dataset.fontSize = size;
+  document.querySelectorAll(".fs-btn").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.size === size));
+  localStorage.setItem("typerbon_font_size", size);
 }
 
 // ── UTILS ─────────────────────────────────────────────────
