@@ -334,9 +334,19 @@ const ExamStore = {
     await setDoc(ref, { ...result, submittedAt: serverTimestamp() });
   },
 
-  /** 教師清除指定學生的考試成績，允許重考 */
-  async resetStudentResult(examId, studentId) {
+  /** 教師重設學生：清除成績並寫入重設 token，學生下次 checkActiveExam 時獲得全新計時 */
+  async resetStudentFull(examId, studentId) {
     await deleteDoc(doc(db, "exams", examId, "results", studentId));
+    await setDoc(doc(db, "exams", examId, "resets", studentId), { at: serverTimestamp() });
+  },
+
+  /** 學生端：若存在重設 token 則消費並回傳 true（呼叫一次即刪除） */
+  async checkAndConsumeReset(examId, studentId) {
+    const ref  = doc(db, "exams", examId, "resets", studentId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    await deleteDoc(ref);
+    return true;
   },
 
   /** 取得該場考試所有成績（依分數排序） */

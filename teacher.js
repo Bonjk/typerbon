@@ -484,10 +484,17 @@ function renderExamCurrentStatus(exam) {
       <span class="badge badge-${isActive ? "hard" : "medium"}">${isActive ? "進行中" : "已結束"}</span>
       <strong>${escHtml(exam.classCode)} 班</strong>
       <span style="color:var(--text-muted);font-size:.82rem">${artInfo}</span>
-      ${isActive
-        ? `<button class="btn-danger btn-sm" id="btn-end-exam" style="margin-left:auto">結束考試</button>`
-        : ""}
-    </div>`;
+      ${isActive ? `<button class="btn-danger btn-sm" id="btn-end-exam" style="margin-left:auto">結束考試</button>` : ""}
+    </div>
+    ${isActive ? `
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="input-group" style="flex:0 0 auto;min-width:180px">
+        <label>指定學生重設全部</label>
+        <input type="text" id="reset-student-id" maxlength="5" placeholder="五碼座號，如 80201" />
+      </div>
+      <button class="btn-danger btn-sm" id="btn-reset-student-by-id" style="margin-bottom:1px">重設全部</button>
+      <span class="input-error" id="reset-student-error" style="align-self:center"></span>
+    </div>` : ""}`;
 
   if (isActive) {
     $("btn-end-exam").addEventListener("click", async () => {
@@ -496,6 +503,7 @@ function renderExamCurrentStatus(exam) {
       showToast("考試已結束");
       loadExamTab();
     });
+    $("btn-reset-student-by-id").addEventListener("click", () => resetStudentById(exam.id));
   }
 
   loadExamResults(exam.id);
@@ -529,7 +537,7 @@ async function loadExamResults(examId) {
         <span class="lb-wpm">${r.wpm} WPM</span>
         <span class="lb-acc">${r.accuracy}%</span>
         <span class="lb-acc">${r.completion}%</span>
-        <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="清除成績，允許重考">重考</button>
+        <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="重設全部，允許重新進入考試">重設</button>
       </div>`).join("")}`;
 
   container.querySelectorAll("[data-retake]").forEach(btn =>
@@ -537,13 +545,29 @@ async function loadExamResults(examId) {
 }
 
 async function retakeStudent(examId, studentId) {
-  if (!confirm(`確定要允許 ${studentId} 重新考試？現有成績將被清除。`)) return;
+  if (!confirm(`確定要重設 ${studentId} 的考試狀態？成績將被清除，可重新進入考試。`)) return;
   try {
-    await ExamStore.resetStudentResult(examId, studentId);
-    showToast(`${studentId} 可以重新考試了`);
+    await ExamStore.resetStudentFull(examId, studentId);
+    showToast(`${studentId} 已重設，可重新進入考試`);
     loadExamResults(examId);
   } catch(e) {
     showToast("操作失敗：" + e.message);
+  }
+}
+
+async function resetStudentById(examId) {
+  const id    = $("reset-student-id").value.trim();
+  const errEl = $("reset-student-error");
+  if (!/^\d{5}$/.test(id)) { errEl.textContent = "請輸入五碼數字"; return; }
+  if (!confirm(`確定要重設 ${id} 的考試狀態？成績將被清除，可重新進入考試。`)) return;
+  errEl.textContent = "";
+  try {
+    await ExamStore.resetStudentFull(examId, id);
+    showToast(`${id} 已重設，可重新進入考試`);
+    $("reset-student-id").value = "";
+    loadExamResults(examId);
+  } catch(e) {
+    errEl.textContent = "操作失敗：" + e.message;
   }
 }
 
