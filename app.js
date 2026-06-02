@@ -196,12 +196,37 @@ function resetSessionState() {
 
 function renderReference(text, cursorPos) {
   const typed = $("typing-input").value;
-  $("reference-box").innerHTML = text.split("").map((ch, i) => {
-    let cls = "char-default";
-    if (i === cursorPos)       cls = "char-cursor";
-    else if (i < typed.length) cls = typed[i] === ch ? "char-correct" : "char-wrong";
-    return `<span class="${cls}">${ch === " " ? "&nbsp;" : escHtml(ch)}</span>`;
-  }).join("");
+  const ref   = $("reference-box");
+  let html = "";
+  let i = 0;
+
+  while (i < text.length) {
+    if (text[i] === " ") {
+      // 空格：單獨一個 span，讓行在空格處換行
+      let cls = "char-default";
+      if (i === cursorPos)       cls = "char-cursor";
+      else if (i < typed.length) cls = typed[i] === " " ? "char-correct" : "char-wrong";
+      html += `<span class="${cls}">&nbsp;</span>`;
+      i++;
+    } else {
+      // 非空格：把整個詞收進 inline-block，防止詞中換行
+      const start = i;
+      while (i < text.length && text[i] !== " ") i++;
+      let word = `<span style="display:inline-block;white-space:nowrap">`;
+      for (let j = start; j < i; j++) {
+        let cls = "char-default";
+        if (j === cursorPos)       cls = "char-cursor";
+        else if (j < typed.length) cls = typed[j] === text[j] ? "char-correct" : "char-wrong";
+        word += `<span class="${cls}">${escHtml(text[j])}</span>`;
+      }
+      word += `</span>`;
+      html += word;
+    }
+  }
+
+  ref.innerHTML = html;
+  // 當參考框可捲動時，確保游標保持在可見範圍內
+  ref.querySelector(".char-cursor")?.scrollIntoView({ block: "nearest" });
 }
 
 function handleTypingInput() {

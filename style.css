@@ -387,7 +387,9 @@ body {
   letter-spacing: .03em;
   margin-bottom: 14px;
   word-break: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  max-height: 220px;
+  overflow-y: auto;
   user-select: none;
 }
 
