@@ -145,29 +145,55 @@ function switchTab(name) {
 async function renderArticleList() {
   const container = $("article-list");
   container.innerHTML = `<div class="loading-state">載入文章中...</div>`;
+  container.className = "";
   $("article-selector").style.display = "block";
 
   const articles = await ArticleStore.getAll();
   container.innerHTML = "";
 
-  articles.forEach(article => {
-    const card = document.createElement("div");
-    card.className = "article-card";
-    const wc = countWords(article.content);
-    const diffLabel = { easy: "初級", medium: "中級", hard: "高級" }[article.difficulty] || article.difficulty;
-    card.innerHTML = `
-      <div class="article-card-title">${escHtml(article.title)}</div>
-      <div class="article-card-meta">
-        <span class="badge badge-${article.difficulty}">${diffLabel}</span>
-        <span>${wc} 個字</span>
-      </div>`;
-    card.addEventListener("click", () => {
-      $("article-selector").style.display = "none";
-      $("result-card").style.display = "none";
-      showTypingArea(article);
+  const groups = { easy: [], medium: [], hard: [] };
+  articles.forEach(a => (groups[a.difficulty] ?? groups.medium).push(a));
+
+  const labels = { easy: "初級", medium: "中級", hard: "高級" };
+
+  for (const diff of ["easy", "medium", "hard"]) {
+    const list = groups[diff];
+    if (!list.length) continue;
+
+    const section = document.createElement("div");
+    section.className = "article-section";
+
+    const hdr = document.createElement("div");
+    hdr.className = `article-section-header diff-${diff}`;
+    hdr.textContent = labels[diff];
+    section.appendChild(hdr);
+
+    const grid = document.createElement("div");
+    grid.className = "article-list";
+
+    list.forEach(article => {
+      const card = document.createElement("div");
+      card.className = "article-card";
+      const wc = countWords(article.content);
+      const examTag = article.isExam
+        ? `<span class="badge badge-exam">考試</span>` : "";
+      card.innerHTML = `
+        <div class="article-card-title">${escHtml(article.title)}</div>
+        <div class="article-card-meta">
+          ${examTag}
+          <span>${wc} 個字</span>
+        </div>`;
+      card.addEventListener("click", () => {
+        $("article-selector").style.display = "none";
+        $("result-card").style.display = "none";
+        showTypingArea(article);
+      });
+      grid.appendChild(card);
     });
-    container.appendChild(card);
-  });
+
+    section.appendChild(grid);
+    container.appendChild(section);
+  }
 }
 
 // ── TYPING SESSION ────────────────────────────────────────

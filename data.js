@@ -18,7 +18,7 @@ const _app = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(_app);
 
 // ── 預設文章 ───────────────────────────────────────────────
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 const DEFAULT_ARTICLES = [
   {
@@ -92,6 +92,69 @@ const DEFAULT_ARTICLES = [
     title: "Jane Eyre — Charlotte Bronte",
     difficulty: "hard",
     content: "There was no possibility of taking a walk that day. We had been wandering, indeed, in the leafless shrubbery an hour in the morning; but since dinner the cold winter wind had brought with it clouds so sombre, and a rain so penetrating, that further outdoor exercise was now out of the question. I was glad of it: I never liked long walks, especially on chilly afternoons. Dreadful to me was the coming home in the raw twilight, with nipped fingers and toes, and a heart saddened by the chidings of Bessie, the nurse, and humbled by the consciousness of my physical inferiority to Eliza, John, and Georgiana Reed."
+  },
+  {
+    id: "exam-easy-1",
+    title: "A Day at School",
+    difficulty: "easy",
+    isExam: true,
+    content: "Every morning, I wake up early and get ready for school. I eat breakfast with my family before leaving home. At school, I study math, English, and science. During lunch, I chat with my friends and share food. In the afternoon, we have sports class and play games outside. After school, I do my homework and read books. I enjoy going to school because I learn something new every day. My teachers are kind and always help me when I need them."
+  },
+  {
+    id: "exam-easy-2",
+    title: "The Park",
+    difficulty: "easy",
+    isExam: true,
+    content: "On weekends, my family often goes to the park near our home. We bring food and eat outside under the tall trees. My little brother likes to run and play on the grass. My parents sit on a bench and talk about their day. I like to ride my bike along the path by the lake. The park is a beautiful and peaceful place. There are many birds and flowers there. I always feel happy and relaxed after spending time at the park."
+  },
+  {
+    id: "exam-easy-3",
+    title: "Cooking with Mom",
+    difficulty: "easy",
+    isExam: true,
+    content: "My mother loves to cook, and she often teaches me how to make simple dishes. On Saturday mornings, we go to the market to buy fresh vegetables, meat, and fruit. Back home, she shows me how to cut and wash the food. My favorite dish is egg soup with tomatoes. It is easy to make and very delicious. Cooking together is a great way to spend time with family. I hope to become a good cook when I grow up."
+  },
+  {
+    id: "exam-medium-1",
+    title: "Sports and Health",
+    difficulty: "medium",
+    isExam: true,
+    content: "Playing sports is one of the best ways to stay healthy and active. When you exercise regularly, your body becomes stronger and your mind feels clearer. Many students enjoy playing basketball, volleyball, or soccer after school. These team sports also teach important skills like cooperation and communication. However, it is important to warm up before you start and cool down after you finish. Drinking enough water during exercise is also necessary. Some people prefer individual sports such as swimming or running. No matter what sport you choose, the most important thing is to enjoy yourself and keep moving. A short walk every day can make a big difference."
+  },
+  {
+    id: "exam-medium-2",
+    title: "Technology in Daily Life",
+    difficulty: "medium",
+    isExam: true,
+    content: "Technology has changed our daily lives in ways that were hard to imagine just a few decades ago. Smartphones allow us to connect with people around the world, search for information, take photos, and even pay for goods and services. In the classroom, students use tablets and computers to study and develop new skills. However, spending too much time on screens can have negative effects on health and social relationships. It is important to balance the use of technology with outdoor activities and regular face-to-face communication. Technology is a powerful and useful tool, but only when it is used with care and self-control."
+  },
+  {
+    id: "exam-medium-3",
+    title: "Environmental Protection",
+    difficulty: "medium",
+    isExam: true,
+    content: "Taking care of our environment is the responsibility of every person on Earth. Pollution from factories, vehicles, and plastic waste is causing serious harm to our planet. Rivers and oceans are filled with garbage, and the air in many cities is difficult to breathe. We can all make a difference by making small changes in our daily lives. Try to use less plastic, recycle your waste, and save electricity whenever possible. Walking or taking public transportation instead of driving also helps reduce pollution. If everyone works together and takes action, we can protect our beautiful planet and leave a better world for future generations."
+  },
+  {
+    id: "exam-hard-1",
+    title: "Decision Making and Cognitive Bias",
+    difficulty: "hard",
+    isExam: true,
+    content: "Every day, humans make hundreds of decisions, from choosing what to eat for breakfast to determining major career choices. While some decisions feel automatic, others require deliberate thought and careful analysis. Psychologists have discovered that human judgment is frequently distorted by cognitive biases, unconscious mental shortcuts that evolved to help us process information quickly. For example, the confirmation bias leads people to seek information that supports their existing beliefs while ignoring contradictory evidence. Similarly, the availability heuristic causes us to overestimate the likelihood of events that come easily to mind. These biases can lead to systematic errors in judgment, affecting everything from personal relationships to financial decisions. Becoming aware of these mental patterns is the first step toward more rational thinking. By deliberately questioning our assumptions and seeking diverse perspectives, we can gradually overcome these inherent limitations and make more thoughtful, well-informed choices."
+  },
+  {
+    id: "exam-hard-2",
+    title: "Urban Development and Sustainability",
+    difficulty: "hard",
+    isExam: true,
+    content: "Modern cities face enormous challenges as their populations continue to grow at unprecedented rates. The rapid expansion of urban areas places significant pressure on infrastructure, transportation systems, housing, and natural resources. City planners and architects are increasingly embracing sustainable design principles to address these concerns. Green buildings that incorporate solar panels, rainwater harvesting systems, and energy-efficient materials are becoming more prevalent in metropolitan areas worldwide. The concept of smart cities, where digital technology monitors and optimizes urban services in real time, is gaining considerable momentum. However, urban development rarely comes without social costs. Rising property values frequently displace lower-income communities, deepening economic inequality. Achieving a genuine balance between economic growth, environmental sustainability, and social equity demands comprehensive policy frameworks and authentic cooperation between governments, private enterprises, and citizens. The quality of urban life for future generations depends fundamentally on the choices we make today."
+  },
+  {
+    id: "exam-hard-3",
+    title: "Memory and the Brain",
+    difficulty: "hard",
+    isExam: true,
+    content: "The human brain's capacity to store and retrieve information is among its most extraordinary attributes. Memory is not a single unified system but rather a sophisticated network of interconnected processes, encompassing encoding, storage, and retrieval. Neuroscientists have identified multiple distinct memory systems, including episodic memory, which records personal experiences, and semantic memory, which stores factual knowledge. The hippocampus, a structure embedded deep within the temporal lobe, plays an indispensable role in consolidating newly acquired information into long-term storage. Remarkably, sleep appears critical to this consolidation process: during deep sleep, the brain systematically replays and reinforces neural pathways formed during waking hours. Forgetting, though often perceived as failure, actually serves an adaptive function by eliminating irrelevant data and allowing the brain to allocate resources more effectively. Understanding memory formation carries profound implications for education, therapy, and the treatment of degenerative neurological conditions."
   }
 ];
 
