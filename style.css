@@ -394,14 +394,10 @@ body {
 .char-default  { color: var(--text-dim); }
 .char-correct  { color: var(--text); }
 .char-wrong    { color: var(--danger); background: rgba(242,95,92,.15); border-radius: 2px; }
-.char-cursor   {
+.char-cursor {
   color: var(--bg);
   background: var(--accent);
   border-radius: 2px;
-  animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; } 50% { opacity: 0; }
 }
 
 /* Typing input */
@@ -784,3 +780,132 @@ body {
   border: 1px solid var(--border);
   flex-wrap: wrap;
 }
+
+/* ── EXAM MODALS ─────────────────────────────────── */
+.exam-modal-overlay {
+  position: fixed; inset: 0; z-index: 8000;
+  background: rgba(0,0,0,.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.exam-modal {
+  background: var(--card);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 100%; max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+
+.exam-modal h2 {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--accent);
+  margin-bottom: 20px;
+  letter-spacing: .04em;
+}
+
+/* Article choice cards */
+.exam-article-choices {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.exam-article-card {
+  flex: 1; min-width: 140px;
+  background: var(--bg3);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color .2s, transform .15s;
+  text-align: center;
+}
+.exam-article-card:hover { transform: translateY(-3px); }
+.exam-article-card.badge-easy   { border-color: rgba(62,207,142,.4); }
+.exam-article-card.badge-easy:hover   { border-color: var(--accent2); }
+.exam-article-card.badge-medium { border-color: rgba(245,200,66,.4); }
+.exam-article-card.badge-medium:hover { border-color: var(--accent); }
+.exam-article-card.badge-hard   { border-color: rgba(242,95,92,.4); }
+.exam-article-card.badge-hard:hover   { border-color: var(--danger); }
+
+.eac-diff  { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.eac-title { font-size: 0.92rem; font-weight: 700; margin-bottom: 6px; }
+.eac-meta  { font-size: 0.75rem; color: var(--text-muted); }
+
+.badge-easy   .eac-diff { color: var(--accent2); }
+.badge-medium .eac-diff { color: var(--accent); }
+.badge-hard   .eac-diff { color: var(--danger); }
+
+/* Rules list */
+.exam-rules-list {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  line-height: 1.8;
+  list-style: none;
+  counter-reset: rule;
+}
+.exam-rules-list li { counter-increment: rule; display: flex; gap: 10px; }
+.exam-rules-list li::before {
+  content: counter(rule, lower-alpha) ".";
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  min-width: 18px;
+}
+
+.exam-rules-check-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px;
+  font-size: 0.88rem;
+}
+.exam-rules-check-row input[type="checkbox"] {
+  width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);
+}
+
+/* 5 confirm buttons */
+.exam-confirm-btns {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.btn-exam-confirm {
+  flex: 1; min-width: 80px;
+  padding: 10px 6px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  letter-spacing: .02em;
+}
+.btn-exam-confirm:disabled { opacity: .3; cursor: not-allowed; transform: none !important; }
+.btn-exam-confirm:not(:disabled):hover { opacity: .85; transform: scale(.97); }
+.btn-exam-confirm:not(:disabled):active { transform: scale(.94); }
+
+.btn-confirm-red    { background: #f25f5c; color: #fff; border-color: #f25f5c; }
+.btn-confirm-orange { background: #f5a442; color: #111; border-color: #f5a442; }
+.btn-confirm-purple { background: #cc5de8; color: #fff; border-color: #cc5de8; }
+.btn-confirm-green  { background: #3ecf8e; color: #111; border-color: #3ecf8e; }
+.btn-confirm-blue   { background: #5b9cf6; color: #fff; border-color: #5b9cf6; }
+
+.exam-modal-cancel {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius);
+  padding: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  transition: border-color .15s;
+}
+.exam-modal-cancel:hover { border-color: var(--border-hi); color: var(--text); }

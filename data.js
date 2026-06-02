@@ -12,7 +12,7 @@ import { initializeApp }                          from "https://www.gstatic.com/
 import { getFirestore, collection, doc,
          getDocs, addDoc, updateDoc, deleteDoc,
          setDoc, getDoc, query, orderBy, limit,
-         serverTimestamp, onSnapshot }            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+         serverTimestamp, onSnapshot }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const _app = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(_app);
@@ -177,20 +177,27 @@ const RecordStore = {
     }));
   },
 
-  /** 排行榜：取前 50 名（依最高分排序） */
+  /** 排行榜：取前 50 名（依最高分排序，排除考試紀錄） */
   async getLeaderboard(topN = 50) {
     const snap = await getDocs(
-      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN))
+      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN + 100))
     );
-    return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
+    return snap.docs
+      .map(d => d.data())
+      .filter(d => !d.isExamResult)
+      .slice(0, topN)
+      .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
-  /** 取得全部排行榜（教師用、班級篩選用） */
+  /** 取得全部排行榜（教師用、班級篩選用，排除考試紀錄） */
   async getAllLeaderboard() {
     const snap = await getDocs(
       query(collection(db, "leaderboard"), orderBy("bestScore", "desc"))
     );
-    return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
+    return snap.docs
+      .map(d => d.data())
+      .filter(d => !d.isExamResult)
+      .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
   /** 教師用：取得所有學生 ID */
@@ -230,11 +237,16 @@ const TeacherAuth = {
   DEFAULT_PW: "teacher123",
 
   async getPassword() {
+    const cached = localStorage.getItem("typerbon_teacher_pw");
+    if (cached) return cached;
     try {
       const snap = await getDoc(doc(db, "settings", "teacher"));
-      if (snap.exists() && snap.data().password) return snap.data().password;
+      if (snap.exists() && snap.data().password) {
+        localStorage.setItem("typerbon_teacher_pw", snap.data().password);
+        return snap.data().password;
+      }
     } catch {}
-    return localStorage.getItem("typerbon_teacher_pw") || this.DEFAULT_PW;
+    return this.DEFAULT_PW;
   },
 
   async check(pw) {
@@ -299,17 +311,19 @@ const ExamStore = {
     return d.id ? d : null;
   },
 
-  /** 開始考試：傳入完整 article 物件避免重複讀取 Firestore */
-  async start(classCode, article) {
+  /** 開始考試：傳入三篇文章 { easy, medium, hard } */
+  async start(classCode, articles) {
     const id = `exam_${Date.now()}`;
+    const pack = (a) => ({ id: a.id, title: a.title, content: a.content, difficulty: a.difficulty });
     await setDoc(doc(db, "settings", "activeExam"), {
       id, classCode,
-      articleId:    article.id,
-      articleTitle: article.title,
-      content:      article.content,
-      difficulty:   article.difficulty || "medium",
-      status:       "active",
-      startedAt:    serverTimestamp(),
+      articles: {
+        easy:   pack(articles.easy),
+        medium: pack(articles.medium),
+        hard:   pack(articles.hard),
+      },
+      status:    "active",
+      startedAt: serverTimestamp(),
     });
     return id;
   },
@@ -319,18 +333,30 @@ const ExamStore = {
     await updateDoc(doc(db, "settings", "activeExam"), { status: "ended" });
   },
 
-  /** 學生提交成績 */
+  /** 學生提交成績（保留最高分；reset 標記允許覆蓋）
+   *  存至 leaderboard/exam_{examId}__{studentId}（leaderboard 集合已有寫入權限）
+   */
   async submitResult(examId, studentId, result) {
-    await setDoc(doc(db, "exams", examId, "results", studentId), {
-      ...result, submittedAt: serverTimestamp(),
+    const ref  = doc(db, "leaderboard", `exam_${examId}__${studentId}`);
+    const snap = await getDoc(ref);
+    const prev = snap.exists() ? snap.data() : null;
+    if (prev && !prev.reset && (prev.score || 0) >= result.score) return;
+    await setDoc(ref, { ...result, examId, isExamResult: true, submittedAt: serverTimestamp() });
+  },
+
+  /** 教師重設學生：以 reset 標記覆蓋成績 */
+  async resetStudentFull(examId, studentId) {
+    await setDoc(doc(db, "leaderboard", `exam_${examId}__${studentId}`), {
+      examId, studentId, reset: true, score: 0, isExamResult: true,
     });
   },
 
-  /** 取得該場考試所有成績（依分數排序） */
+  /** 取得該場考試所有成績（排除 reset 標記，依分數排序） */
   async getResults(examId) {
-    const snap = await getDocs(collection(db, "exams", examId, "results"));
+    const snap = await getDocs(collection(db, "leaderboard"));
     return snap.docs
       .map(d => d.data())
+      .filter(d => d.isExamResult && d.examId === examId && !d.reset)
       .sort((a, b) => b.score - a.score)
       .map((r, i) => ({ ...r, rank: i + 1 }));
   },

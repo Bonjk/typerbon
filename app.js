@@ -24,6 +24,7 @@ const state = {
   examTimerInterval: null,
   examSubmitted: false,
   pendingExam: null,
+  examArticles: null,       // { easy, medium, hard } during active exam
 };
 
 const $ = id => document.getElementById(id);
@@ -57,16 +58,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("btn-restart").addEventListener("click", restartSession);
   $("btn-cancel").addEventListener("click", cancelSession);
   $("btn-join-exam").addEventListener("click", joinExam);
-  $("btn-submit-exam").addEventListener("click", () => submitExam($("typing-input").value));
-  $("btn-retry").addEventListener("click", () => showTypingArea(state.currentArticle));
+  $("btn-submit-exam").addEventListener("click", () => submitExam($("typing-input").value, true));
+  $("btn-retry").addEventListener("click", () => {
+    if (state.examMode && state.examArticles) {
+      $("result-card").style.display = "none";
+      showExamArticleModal(state.examArticles);
+    } else {
+      showTypingArea(state.currentArticle);
+    }
+  });
   $("btn-choose-another").addEventListener("click", () => {
     $("typing-area").style.display = "none";
     $("result-card").style.display = "none";
     $("btn-retry").style.display = "";
+    $("btn-retry").textContent = "再試一次";
     $("btn-choose-another").textContent = "選其他文章";
     $("res-completion-row").style.display = "none";
     renderArticleList();
     checkActiveExam();
+  });
+  $("btn-exam-article-cancel").addEventListener("click", () => {
+    $("exam-article-overlay").style.display = "none";
+  });
+  $("btn-exam-confirm-cancel").addEventListener("click", () => {
+    $("exam-confirm-overlay").style.display = "none";
   });
 });
 
@@ -96,10 +111,13 @@ function handleLogout() {
   state.examDeadline = null;
   state.examSubmitted = false;
   state.pendingExam = null;
+  state.examArticles = null;
   $("exam-banner").style.display = "none";
   $("exam-time-chip").style.display = "none";
   $("btn-submit-exam").style.display = "none";
   $("btn-cancel").style.display = "";
+  $("exam-article-overlay").style.display = "none";
+  $("exam-confirm-overlay").style.display = "none";
   sessionStorage.removeItem("typerbon_student");
   state.studentId = null;
   state.currentArticle = null;
@@ -443,33 +461,81 @@ async function checkActiveExam() {
     state.pendingExam = null;
     return;
   }
+
   state.pendingExam = exam;
-  $("exam-banner-text").textContent = `${exam.articleTitle}（10 分鐘）`;
+  $("exam-banner-text").textContent = `${exam.classCode} 班考試進行中（10 分鐘）`;
   banner.style.display = "flex";
 }
 
 function joinExam() {
   const exam = state.pendingExam;
+  if (!exam || !exam.articles) return;
+  state.examArticles = exam.articles;
+  showExamArticleModal(exam.articles);
+}
+
+function showExamArticleModal(articles) {
+  const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+  const diffCoef  = { easy: "×0.90", medium: "×0.95", hard: "×1.00" };
+
+  $("exam-article-choices").innerHTML = ["easy", "medium", "hard"].map(d => {
+    const a = articles[d];
+    if (!a) return "";
+    const wc = countWords(a.content);
+    return `<div class="exam-article-card badge-${d}" data-diff="${d}">
+      <div class="eac-diff">${diffLabel[d]}</div>
+      <div class="eac-title">${escHtml(a.title)}</div>
+      <div class="eac-meta">${wc} 字&ensp;最高分係數 ${diffCoef[d]}</div>
+    </div>`;
+  }).join("");
+
+  $("exam-article-overlay").style.display = "flex";
+
+  $("exam-article-choices").querySelectorAll(".exam-article-card").forEach(card =>
+    card.addEventListener("click", () => {
+      const article = articles[card.dataset.diff];
+      $("exam-article-overlay").style.display = "none";
+      showExamConfirmModal(article);
+    })
+  );
+}
+
+function showExamConfirmModal(article) {
+  $("exam-confirm-overlay").style.display = "flex";
+  const checkbox = $("exam-rules-check");
+  checkbox.checked = false;
+  document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = true; });
+  checkbox.onchange = () =>
+    document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = !checkbox.checked; });
+  $("btn-confirm-purple").onclick = () => {
+    $("exam-confirm-overlay").style.display = "none";
+    startActualExam(article);
+  };
+}
+
+function startActualExam(article) {
+  const exam = state.pendingExam;
   if (!exam) return;
 
   state.examMode      = true;
   state.examId        = exam.id;
-  state.examDeadline  = Date.now() + 10 * 60 * 1000;
   state.examSubmitted = false;
 
-  $("exam-banner").style.display   = "none";
+  const isFirstAttempt = !state.examDeadline;
+  if (isFirstAttempt) {
+    state.examDeadline = Date.now() + 10 * 60 * 1000;
+    startExamCountdown();
+  }
+
+  $("exam-banner").style.display      = "none";
   $("article-selector").style.display = "none";
-  $("result-card").style.display   = "none";
+  $("result-card").style.display      = "none";
 
-  showTypingArea({
-    id: exam.articleId, title: exam.articleTitle,
-    content: exam.content, difficulty: exam.difficulty,
-  });
+  showTypingArea({ id: article.id, title: article.title, content: article.content, difficulty: article.difficulty });
 
-  startExamCountdown();
-  $("exam-time-chip").style.display   = "";
-  $("btn-submit-exam").style.display  = "";
-  $("btn-cancel").style.display       = "none";
+  $("exam-time-chip").style.display  = "";
+  $("btn-submit-exam").style.display = "";
+  $("btn-cancel").style.display      = "none";
 }
 
 function startExamCountdown() {
@@ -478,7 +544,24 @@ function startExamCountdown() {
     const remaining = state.examDeadline - Date.now();
     if (remaining <= 0) {
       clearInterval(state.examTimerInterval);
-      if (!state.examSubmitted) submitExam($("typing-input").value);
+      $("exam-article-overlay").style.display = "none";
+      $("exam-confirm-overlay").style.display = "none";
+      if (!state.examSubmitted) {
+        submitExam($("typing-input").value, true);
+      } else {
+        // Already on result screen — clean up retry option
+        $("btn-retry").style.display  = "none";
+        $("btn-retry").textContent    = "再試一次";
+        $("btn-choose-another").textContent = "選其他文章";
+        $("exam-time-chip").style.display   = "none";
+        $("btn-submit-exam").style.display  = "none";
+        $("btn-cancel").style.display       = "";
+        state.examMode     = false;
+        state.examId       = null;
+        state.examDeadline = null;
+        state.examArticles = null;
+        state.pendingExam  = null;
+      }
       return;
     }
     const mins = Math.floor(remaining / 60000);
@@ -489,11 +572,11 @@ function startExamCountdown() {
   }, 500);
 }
 
-async function submitExam(typed) {
+async function submitExam(typed, isFinal = false) {
   if (state.examSubmitted) return;
   state.examSubmitted = true;
   clearInterval(state.timerInterval);
-  clearInterval(state.examTimerInterval);
+  if (isFinal) clearInterval(state.examTimerInterval);
   state.isRunning  = false;
   state.isFinished = true;
 
@@ -512,6 +595,7 @@ async function submitExam(typed) {
   const result = {
     studentId: state.studentId,
     classCode: state.studentId.slice(0, 3),
+    difficulty: state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc,
     completion, score, elapsed: Math.round(elapsed),
     articleTitle: state.currentArticle.title,
@@ -530,23 +614,31 @@ async function submitExam(typed) {
   $("res-completion-row").style.display = "";
   $("res-completion").textContent   = completion + "%";
   renderLetterBreakdown(result.letterStats);
-  $("btn-retry").style.display      = "none";
-  $("btn-choose-another").textContent = "回到練習";
 
-  // Restore exam UI elements
-  $("exam-time-chip").style.display  = "none";
   $("btn-submit-exam").style.display = "none";
   $("btn-cancel").style.display      = "";
 
-  // Save to Firestore
-  const savedExamId = state.examId;
-  state.examMode = false;
-  state.examId   = null;
-  state.examDeadline = null;
-  state.pendingExam  = null;
+  const timeRemaining = state.examDeadline ? state.examDeadline - Date.now() : 0;
+  const canRetry = !isFinal && timeRemaining > 5000 && state.examArticles;
+
+  $("btn-retry").style.display         = canRetry ? "" : "none";
+  $("btn-retry").textContent           = "再選文章";
+  $("btn-choose-another").style.display = isFinal ? "none" : "";
+  $("btn-choose-another").textContent  = isFinal ? "選其他文章" : "回到練習";
+
+  const examIdToSave = state.examId || state.pendingExam?.id;
+
+  if (isFinal) {
+    $("exam-time-chip").style.display = "none";
+    state.examMode     = false;
+    state.examId       = null;
+    state.examDeadline = null;
+    state.examArticles = null;
+    state.pendingExam  = null;
+  }
 
   try {
-    await ExamStore.submitResult(savedExamId, state.studentId, result);
+    if (examIdToSave) await ExamStore.submitResult(examIdToSave, state.studentId, result);
   } catch {
     showToast("成績儲存失敗，請檢查網路連線");
   }
