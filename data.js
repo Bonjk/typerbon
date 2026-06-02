@@ -12,7 +12,7 @@ import { initializeApp }                          from "https://www.gstatic.com/
 import { getFirestore, collection, doc,
          getDocs, addDoc, updateDoc, deleteDoc,
          setDoc, getDoc, query, orderBy, limit,
-         serverTimestamp, onSnapshot }            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+         serverTimestamp, onSnapshot }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const _app = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(_app);
@@ -177,20 +177,27 @@ const RecordStore = {
     }));
   },
 
-  /** 排行榜：取前 50 名（依最高分排序） */
+  /** 排行榜：取前 50 名（依最高分排序，排除考試紀錄） */
   async getLeaderboard(topN = 50) {
     const snap = await getDocs(
-      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN))
+      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN + 100))
     );
-    return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
+    return snap.docs
+      .map(d => d.data())
+      .filter(d => !d.isExamResult)
+      .slice(0, topN)
+      .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
-  /** 取得全部排行榜（教師用、班級篩選用） */
+  /** 取得全部排行榜（教師用、班級篩選用，排除考試紀錄） */
   async getAllLeaderboard() {
     const snap = await getDocs(
       query(collection(db, "leaderboard"), orderBy("bestScore", "desc"))
     );
-    return snap.docs.map((d, i) => ({ rank: i + 1, ...d.data() }));
+    return snap.docs
+      .map(d => d.data())
+      .filter(d => !d.isExamResult)
+      .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
   /** 教師用：取得所有學生 ID */
@@ -326,34 +333,30 @@ const ExamStore = {
     await updateDoc(doc(db, "settings", "activeExam"), { status: "ended" });
   },
 
-  /** 學生提交成績（僅保留最高分） */
+  /** 學生提交成績（保留最高分；reset 標記允許覆蓋）
+   *  存至 leaderboard/exam_{examId}__{studentId}（leaderboard 集合已有寫入權限）
+   */
   async submitResult(examId, studentId, result) {
-    const ref  = doc(db, "exams", examId, "results", studentId);
+    const ref  = doc(db, "leaderboard", `exam_${examId}__${studentId}`);
     const snap = await getDoc(ref);
-    if (snap.exists() && (snap.data().score || 0) >= result.score) return;
-    await setDoc(ref, { ...result, submittedAt: serverTimestamp() });
+    const prev = snap.exists() ? snap.data() : null;
+    if (prev && !prev.reset && (prev.score || 0) >= result.score) return;
+    await setDoc(ref, { ...result, examId, isExamResult: true, submittedAt: serverTimestamp() });
   },
 
-  /** 教師重設學生：清除成績並寫入重設 token，學生下次 checkActiveExam 時獲得全新計時 */
+  /** 教師重設學生：以 reset 標記覆蓋成績 */
   async resetStudentFull(examId, studentId) {
-    await deleteDoc(doc(db, "exams", examId, "results", studentId));
-    await setDoc(doc(db, "exams", examId, "resets", studentId), { at: serverTimestamp() });
+    await setDoc(doc(db, "leaderboard", `exam_${examId}__${studentId}`), {
+      examId, studentId, reset: true, score: 0, isExamResult: true,
+    });
   },
 
-  /** 學生端：若存在重設 token 則消費並回傳 true（呼叫一次即刪除） */
-  async checkAndConsumeReset(examId, studentId) {
-    const ref  = doc(db, "exams", examId, "resets", studentId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return false;
-    await deleteDoc(ref);
-    return true;
-  },
-
-  /** 取得該場考試所有成績（依分數排序） */
+  /** 取得該場考試所有成績（排除 reset 標記，依分數排序） */
   async getResults(examId) {
-    const snap = await getDocs(collection(db, "exams", examId, "results"));
+    const snap = await getDocs(collection(db, "leaderboard"));
     return snap.docs
       .map(d => d.data())
+      .filter(d => d.isExamResult && d.examId === examId && !d.reset)
       .sort((a, b) => b.score - a.score)
       .map((r, i) => ({ ...r, rank: i + 1 }));
   },

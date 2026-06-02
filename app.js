@@ -462,17 +462,6 @@ async function checkActiveExam() {
     return;
   }
 
-  // 若教師已重設此學生，清除本地考試狀態讓他可重新進入
-  const wasReset = await ExamStore.checkAndConsumeReset(exam.id, state.studentId).catch(() => false);
-  if (wasReset) {
-    clearInterval(state.examTimerInterval);
-    state.examMode      = false;
-    state.examId        = null;
-    state.examDeadline  = null;
-    state.examArticles  = null;
-    state.examSubmitted = false;
-  }
-
   state.pendingExam = exam;
   $("exam-banner-text").textContent = `${exam.classCode} 班考試進行中（10 分鐘）`;
   banner.style.display = "flex";
