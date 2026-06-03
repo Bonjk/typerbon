@@ -421,6 +421,31 @@ const ExamStore = {
       .sort((a, b) => b.score - a.score)
       .map((r, i) => ({ ...r, rank: i + 1 }));
   },
+
+  /** 結束考試前：將完整考試記錄（文章、日期、所有成績）存入 examRecords */
+  async saveRecord(examId) {
+    const examSnap = await getDoc(doc(db, "settings", "activeExam"));
+    if (!examSnap.exists()) return;
+    const exam = examSnap.data();
+    const results = await this.getResults(examId);
+    await setDoc(doc(db, "examRecords", examId), {
+      examId,
+      classCode:    exam.classCode,
+      articles:     exam.articles || {},
+      startedAt:    exam.startedAt,
+      endedAt:      serverTimestamp(),
+      studentCount: results.length,
+      results,
+    });
+  },
+
+  /** 取得所有考試記錄（依結束時間降序） */
+  async getRecords() {
+    const snap = await getDocs(
+      query(collection(db, "examRecords"), orderBy("endedAt", "desc"))
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
 };
 
 export { db, ArticleStore, RecordStore, ExamStore, TeacherAuth,

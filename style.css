@@ -946,6 +946,27 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
   transition: background .15s;
 }
 
+/* ── EXAM RECORD CARDS ───────────────────────────── */
+.exam-record-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.erc-header {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px;
+  cursor: default;
+}
+.erc-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.erc-class { font-family: var(--font-mono); font-weight: 700; font-size: .9rem; color: var(--accent); }
+.erc-date  { font-size: .8rem; color: var(--text-muted); }
+.erc-count { font-size: .8rem; color: var(--text-muted); font-family: var(--font-mono); }
+.erc-arts  { flex: 1; display: flex; gap: 12px; flex-wrap: wrap; }
+.erc-toggle { margin-left: auto; white-space: nowrap; }
+.erc-body  { padding: 0 16px 16px; }
+
 /* Exam results grid — rank id diff score wpm netAcc grossAcc completion action */
 .exam-grid {
   display: grid;

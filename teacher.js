@@ -2,7 +2,7 @@
  * teacher.js — 教師後台邏輯（Firebase 版）
  */
 import { ArticleStore, RecordStore, ExamStore, TeacherAuth,
-         countWords, formatDate, showToast } from "./data.js";
+         countWords, formatDate, validateStudentId, showToast } from "./data.js";
 
 const teacherState = { editingId: null, leaderboardCache: null, examArticles: null };
 const $ = id => document.getElementById(id);
@@ -472,6 +472,7 @@ async function loadExamTab() {
 
   const exam = await ExamStore.getCurrent();
   renderExamCurrentStatus(exam);
+  loadExamRecords();
 }
 
 function renderExamCurrentStatus(exam) {
@@ -512,8 +513,13 @@ function renderExamCurrentStatus(exam) {
   if (isActive) {
     $("btn-end-exam").addEventListener("click", async () => {
       if (!confirm("確定要結束考試？學生將無法繼續加入。")) return;
+      try {
+        await ExamStore.saveRecord(exam.id);
+      } catch(e) {
+        showToast("成績記錄儲存失敗：" + e.message);
+      }
       await ExamStore.end();
-      showToast("考試已結束");
+      showToast("考試已結束，成績已儲存");
       loadExamTab();
     });
     $("btn-reset-student-by-id").addEventListener("click", () => resetStudentById(exam.id));
@@ -673,6 +679,113 @@ async function startExam() {
     btn.disabled = false;
     btn.textContent = "開始考試";
   }
+}
+
+// ── EXAM RECORDS ───────────────────────────────────────────
+async function loadExamRecords() {
+  const container = $("exam-records-list");
+  if (!container) return;
+  container.innerHTML = `<div class="loading-state">載入考試記錄中...</div>`;
+
+  let records;
+  try {
+    records = await ExamStore.getRecords();
+  } catch {
+    container.innerHTML = `<div class="empty-state">無法載入考試記錄，請確認 Firestore 規則已包含 examRecords 集合。</div>`;
+    return;
+  }
+
+  if (!records.length) {
+    container.innerHTML = `<div class="empty-state">尚無考試記錄</div>`;
+    return;
+  }
+
+  const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+
+  container.innerHTML = records.map(rec => {
+    const endedAt = rec.endedAt?.toDate?.() ?? null;
+    const dateStr = endedAt
+      ? endedAt.toLocaleDateString("zh-TW") + " " + endedAt.toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" })
+      : "—";
+    const arts = Object.values(rec.articles || {}).map(a =>
+      `<span style="color:var(--text-muted);font-size:.78rem">${diffLabel[a.difficulty] || "—"}：${escHtml(a.title)}</span>`
+    ).join("　");
+
+    return `
+      <div class="exam-record-card" data-id="${escHtml(rec.examId)}">
+        <div class="erc-header">
+          <div class="erc-meta">
+            <span class="erc-class">${escHtml(rec.classCode)} 班</span>
+            <span class="erc-date">${dateStr}</span>
+            <span class="erc-count">${rec.studentCount ?? 0} 人提交</span>
+          </div>
+          <div class="erc-arts">${arts}</div>
+          <button class="btn-secondary btn-sm erc-toggle">展開</button>
+        </div>
+        <div class="erc-body" style="display:none">
+          ${renderRecordResults(rec)}
+          <button class="btn-secondary btn-sm erc-export" style="margin-top:10px">匯出 Excel</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  container.querySelectorAll(".erc-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const body = btn.closest(".exam-record-card").querySelector(".erc-body");
+      const open = body.style.display !== "none";
+      body.style.display = open ? "none" : "block";
+      btn.textContent = open ? "展開" : "收起";
+    });
+  });
+
+  container.querySelectorAll(".erc-export").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const card = btn.closest(".exam-record-card");
+      const rec  = records.find(r => r.examId === card.dataset.id);
+      if (rec) exportRecordExcel(rec);
+    });
+  });
+}
+
+function renderRecordResults(rec) {
+  const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+  if (!rec.results?.length) return `<div class="empty-state">無提交成績</div>`;
+  return `
+    <div class="exam-grid lb-header" style="margin-top:10px">
+      <span>名次</span><span>班級座號</span><span>難度</span>
+      <span>分數</span><span>WPM</span><span>淨正確率</span><span>毛正確率</span><span>完成度</span><span></span>
+    </div>
+    ${rec.results.map((r, i) => `
+      <div class="exam-grid lb-row">
+        <span class="lb-rank">${i + 1}</span>
+        <span class="lb-id">${escHtml(r.studentId)}</span>
+        <span style="font-size:.78rem;color:var(--text-muted)">${diffLabel[r.difficulty] || "—"}</span>
+        <span class="lb-score">${r.score}</span>
+        <span class="lb-wpm">${r.wpm} WPM</span>
+        <span class="lb-acc">${r.accuracy}%</span>
+        <span class="lb-acc">${r.grossAccuracy != null ? r.grossAccuracy + "%" : "—"}</span>
+        <span class="lb-acc">${r.completion}%</span>
+        <span></span>
+      </div>`).join("")}`;
+}
+
+function exportRecordExcel(rec) {
+  if (typeof XLSX === "undefined") { showToast("Excel 函式庫未載入"); return; }
+  const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+  const endedAt = rec.endedAt?.toDate?.();
+  const dateStr = endedAt ? endedAt.toISOString().slice(0, 10) : "unknown";
+  const rows = (rec.results || []).map((r, i) => ({
+    名次: i + 1, 班級座號: r.studentId, 班級: r.studentId?.slice(0, 3) || "",
+    難度: diffLabel[r.difficulty] || "", 分數: r.score, WPM: r.wpm,
+    淨正確率: r.accuracy != null ? r.accuracy + "%" : "",
+    毛正確率: r.grossAccuracy != null ? r.grossAccuracy + "%" : "",
+    完成度: r.completion != null ? r.completion + "%" : "",
+    花費秒數: r.elapsed, 文章名稱: r.articleTitle || "",
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "考試成績");
+  XLSX.writeFile(wb, `考試記錄_${rec.classCode}班_${dateStr}.xlsx`);
 }
 
 // ── UTILS ──────────────────────────────────────────────────
