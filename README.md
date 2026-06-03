@@ -1,50 +1,41 @@
 # TyperBon
 
-TyperBon 是一個打字練習平台，學生以班級座號登入後可練習老師指定的文章，成績自動記錄並顯示同班排行榜。教師後台可管理文章、開啟考試模式、查詢學生成績，並匯出 CSV。
+英文打字練習平台，專為課堂設計。
 
-## 功能概覽
+## 特色
+
+- **無密碼登入** — 學生以班級座號（五碼數字）直接進入，無需帳號
+- **自訂文章** — 老師可在後台新增任意文章，不受預設內容限制
+- **即時排行榜** — 每次練習後自動更新，可切換同班 / 全體檢視
+- **考試模式** — 老師指定三種難度各一篇，學生選難度、十分鐘計時作答
+- **教師後台** — 管理文章、查詢成績、控制考試流程、匯出 Excel
+
+---
+
+## 功能
 
 ### 學生端
-- 班級座號登入（前三碼班級 + 後兩碼座號）
-- 文章依難度分為三區塊（初級 / 中級 / 高級），考試用文章標有紫色「考試」標籤
-- 打字練習：即時 WPM、正確率、游標追蹤；文章較長時可上下捲動
-- 字型大小選擇（小 / 中 / 大 / 特大），設定存於 localStorage
-- 個人歷史成績、字母正確率分析
-- 同班 / 全體排行榜切換
-
-### 考試模式
-- 老師在後台開啟考試並指定三種難度文章各一篇
-- 學生看到考試橫幅後點「加入考試」，選擇難度 → 確認規則（須選紫色按鈕）→ 開始計時
-- 十分鐘內可多次嘗試，系統保留最高分；時限內可隨時切換文章重試
-- 考試成績不進入練習排行榜
+- 班級座號登入（前三碼班級 ＋ 後兩碼座號）
+- 文章依難度分為三區塊（初級 / 中級 / 高級），考試文章標有「考試」標籤
+- 即時數據：WPM、正確率、游標追蹤；文章較長時可上下捲動
+- 個別字母正確率分析
+- 個人歷史紀錄 / 班級排行榜
 
 ### 教師後台
-- 文章管理：新增 / 編輯 / 刪除（預設文章亦可刪除）
-- 考試管理：選擇三種難度文章各一開始考試、查看即時成績、結束考試、個別學生重設
-- 成績查詢：輸入五碼座號查詢；排行榜可依班級篩選或查看全體；CSV 匯出
-- 設定：修改後台密碼、刪除指定學生全部練習紀錄
+- 文章管理（新增 / 編輯 / 刪除）
+- 考試管理：選文章、開始 / 結束考試、查看即時成績、重設個別學生
+- 成績查詢：依座號查詢、班級篩選、全體排行榜
+- 考試成績匯出（.xlsx）
 
-## 專案結構
+---
 
-```
-typerbon/
-├── index.html              # 學生端主頁（URL: /）
-├── teacher/
-│   └── index.html          # 教師後台（URL: /teacher/）
-├── app.js                  # 學生端邏輯
-├── teacher.js              # 教師後台邏輯
-├── data.js                 # Firebase 資料層（ArticleStore / RecordStore / ExamStore）
-├── firebase-config.js      # Firebase 設定（需自行填入）
-└── style.css               # 樣式
-```
-
-## 設定步驟
+## 部署方式
 
 ### 1. 建立 Firebase 專案
 
-1. 前往 [Firebase Console](https://console.firebase.google.com/) 並建立新專案
+1. 前往 [Firebase Console](https://console.firebase.google.com/) 建立新專案
 2. 啟用 **Firestore Database**（Production mode，建議地區：`asia-east1`）
-3. 在專案設定中新增 Web 應用程式，複製 `firebaseConfig` 內的所有值
+3. 在專案設定中新增 Web 應用程式，複製 `firebaseConfig`
 
 ### 2. 填入 firebase-config.js
 
@@ -59,75 +50,103 @@ const FIREBASE_CONFIG = {
 };
 ```
 
-### 3. 設定 Firestore Security Rules
-
-在 Firebase Console → Firestore → Rules 貼上以下規則：
+### 3. Firestore Security Rules
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /articles/{id} {
-      allow read: if true;
-      allow write: if true;
-    }
-    match /records/{studentId}/sessions/{sessionId} {
-      allow read: if true;
-      allow create: if true;
-    }
-    match /leaderboard/{id} {
-      allow read: if true;
-      allow write: if true;
-    }
-    match /settings/{doc} {
-      allow read: if true;
-      allow write: if true;
-    }
+    match /articles/{id}               { allow read, write: if true; }
+    match /records/{s}/sessions/{id}   { allow read: if true; allow create: if true; }
+    match /leaderboard/{id}            { allow read, write: if true; }
+    match /settings/{doc}              { allow read, write: if true; }
   }
 }
 ```
 
 ### 4. 部署至 GitHub Pages
 
-1. 將專案推送至 GitHub 公開 repo
-2. 前往 repo **Settings → Pages**，選擇 `master` branch，根目錄（`/`）
-3. 幾分鐘後即可透過 `https://<帳號>.github.io/<repo名稱>/` 訪問
+1. 推送至 GitHub 公開 repo
+2. **Settings → Pages**，選擇 `master` branch，根目錄 `/`
+3. 學生端：`https://<帳號>.github.io/<repo>/`
+4. 教師後台：`https://<帳號>.github.io/<repo>/teacher/`
 
-## 使用說明
+---
 
-### 學生端
+## 細部說明
 
-- 以五碼數字登入，格式：`班級三碼 + 座號兩碼`（例：`80213` = 802 班 13 號）
-- 座號範圍：01–60；班級範圍：100–999
-- 排行榜只顯示同班同學（相同前三碼），可切換查看全體
+### 登入格式
 
-### 教師後台
+| 欄位 | 長度 | 範圍 | 範例 |
+|------|------|------|------|
+| 班級碼 | 3 碼 | 100–999 | 802 |
+| 座號 | 2 碼 | 01–60 | 13 |
+| 完整座號 | 5 碼 | — | 80213 |
 
-- 網址：`https://<帳號>.github.io/<repo名稱>/teacher/`
-- 預設密碼：`teacher123`（可在後台「設定」分頁修改）
-- 考試用文章（`isExam: true`）也可當一般練習文章使用
-- 考試成績存於 `leaderboard/exam_{examId}__{studentId}`，不影響練習排行榜
+排行榜以前三碼區分班級，「同班」只顯示相同班級碼的學生。
 
-## 分數計算公式
+---
 
-### 練習模式（0–20000 分）
+### 分數計算公式
+
+#### 練習模式（0–20,000 分）
 
 ```
 分數 = (正確率分 × 0.649 + 速度分 × 0.351) × 毛正確率因子 × 難度係數 × 完成度係數
 ```
 
-- **正確率分**：`(淨正確率 / 100)² × 100`
-- **速度分**：WPM 30 以上 = 100；20–30 線性 80–100；10–20 線性 60–80；10 以下按比例
-- **毛正確率因子**：`(毛正確率 / 100) ^ 0.3`
-- **難度係數**：初級 0.90、中級 0.95、高級 1.00
-- **完成度係數**：依完成時間計算，參考時間 15 WPM，範圍 1–200
+| 項目 | 計算方式 |
+|------|----------|
+| 正確率分 | `(淨正確率 / 100)² × 100` |
+| 速度分 | WPM ≥ 25 → 100；15–25 線性 80–100；8–15 線性 60–80；< 8 線性 0–60 |
+| 毛正確率因子 | `(毛正確率 / 100) ^ 0.3` |
+| 難度係數 | 初級 × 0.90、中級 × 0.95、高級 × 1.00 |
+| 完成度係數 | 以 15 WPM 為基準時間，範圍 1–200 |
 
-### 考試模式（0–100 分）
+**模擬數據（100 字文章）**
 
-完成度係數改為 `已輸入字數 / 文章總字數`（0–1），其餘公式相同。  
-分數等級：≥85 優秀、≥70 不錯、≥55 繼續加油。
+| WPM | 淨正確率 | 毛正確率 | 難度 | 分數 | 等第 |
+|-----|---------|---------|------|------|------|
+| 5  | 78% | 70% | 初級 | 1,405 | 多加練習 |
+| 8  | 82% | 75% | 初級 | 2,831 | 多加練習 |
+| 10 | 85% | 78% | 中級 | 4,133 | 多加練習 |
+| 13 | 88% | 83% | 中級 | 5,966 | 繼續加油 |
+| 15 | 93% | 89% | 中級 | 7,725 | 不錯 |
+| 18 | 91% | 86% | 高級 | 9,626 | 優秀 |
+| 20 | 94% | 91% | 高級 | 11,498 | 優秀 |
 
-## Firestore 資料結構
+等第閾值：≥ 8,500 優秀 / ≥ 7,000 不錯 / ≥ 5,500 繼續加油
+
+#### 考試模式（0–100 分）
+
+完成度係數改為 `已提交字數 / 文章總字數`（0–1），其餘公式相同。
+
+**模擬數據**
+
+| WPM | 淨正確率 | 毛正確率 | 難度 | 完成度 | 分數 | 等第 |
+|-----|---------|---------|------|-------|------|------|
+| 8  | 80% | 73% | 初級 | 80% | 41 | 多加練習 |
+| 10 | 85% | 79% | 中級 | 85% | 53 | 多加練習 |
+| 12 | 88% | 83% | 中級 | 90% | 61 | 繼續加油 |
+| 15 | 93% | 90% | 中級 | 100% | 78 | 不錯 |
+| 20 | 95% | 92% | 高級 | 100% | 88 | 優秀 |
+| 25 | 99% | 97% | 高級 | 100% | 98 | 優秀 |
+
+等第閾值：≥ 85 優秀 / ≥ 70 不錯 / ≥ 55 繼續加油
+
+---
+
+### 教師後台
+
+- 網址：`/teacher/`（不需 .html）
+- 預設密碼：`teacher123`（可在「設定」分頁修改）
+- 密碼修改後存入 Firestore，並同步至 localStorage 快取
+- 考試用文章（`isExam: true`）學生也可在練習模式中自由使用
+- 考試成績存於 leaderboard 集合，不影響練習排行榜
+
+---
+
+### Firestore 資料結構
 
 ```
 articles/{id}
@@ -135,8 +154,8 @@ articles/{id}
   isDefault, isExam, createdAt
 
 records/{studentId}/sessions/{sessionId}
-  ts, articleId, articleTitle, wpm, accuracy, score, elapsed
-  letterStats, createdAt
+  ts, articleId, articleTitle, wpm, accuracy, grossAccuracy
+  score, completionFactor, difficulty, elapsed, letterStats
 
 leaderboard/{studentId}                      # 練習最高分
   studentId, classCode, bestScore, bestWpm
@@ -144,18 +163,11 @@ leaderboard/{studentId}                      # 練習最高分
 
 leaderboard/exam_{examId}__{studentId}       # 考試成績
   examId, studentId, score, wpm, accuracy
-  difficulty, articleTitle, isExamResult
+  grossAccuracy, difficulty, completion
+  articleTitle, isExamResult
   reset (true = 已被老師重設)
 
-settings/teacher
-  password
-
-settings/activeExam
-  id, classCode, status (active/ended)
-  articles: { easy, medium, hard }
-    → { id, title, content, difficulty }
-  startedAt
-
-settings/seeded
-  version (目前為 3), seededAt
+settings/teacher    → password
+settings/activeExam → id, classCode, status, articles, startedAt
+settings/seeded     → version (目前 3), seededAt
 ```
