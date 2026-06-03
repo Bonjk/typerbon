@@ -295,7 +295,14 @@ const RecordStore = {
 };
 
 // ── TeacherAuth ────────────────────────────────────────────
-// 密碼存在 Firestore settings/teacher，fallback 至 localStorage
+// 密碼以 SHA-256 hash 儲存於 Firestore settings/teacher 及 localStorage。
+// 若 Firestore 仍存明文（舊版），第一次登入時自動升級為 hash。
+
+async function hashPassword(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 const TeacherAuth = {
   DEFAULT_PW: "teacher123",
 
@@ -313,12 +320,21 @@ const TeacherAuth = {
   },
 
   async check(pw) {
-    return pw === await this.getPassword();
+    const stored = await this.getPassword();
+    const hashed = await hashPassword(pw);
+    if (hashed === stored) return true;
+    // 舊版明文比對：成功後自動升級為 hash
+    if (pw === stored) {
+      await this.setPassword(pw);
+      return true;
+    }
+    return false;
   },
 
   async setPassword(newPw) {
-    await setDoc(doc(db, "settings", "teacher"), { password: newPw });
-    localStorage.setItem("typerbon_teacher_pw", newPw);
+    const hashed = await hashPassword(newPw);
+    await setDoc(doc(db, "settings", "teacher"), { password: hashed });
+    localStorage.setItem("typerbon_teacher_pw", hashed);
   }
 };
 

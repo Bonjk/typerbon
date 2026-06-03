@@ -52,6 +52,12 @@ const FIREBASE_CONFIG = {
 
 ### 3. Firestore Security Rules
 
+規則已維護於 [`firestore.rules`](firestore.rules)。有兩種更新方式：
+
+**方式 A — Firebase Console（手動貼上）**
+
+前往 Firebase Console → Firestore → Rules，貼上以下內容：
+
 ```
 rules_version = '2';
 service cloud.firestore {
@@ -63,6 +69,15 @@ service cloud.firestore {
     match /examRecords/{id}            { allow read, write: if true; }
   }
 }
+```
+
+**方式 B — Firebase CLI**
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init firestore   # 選擇現有專案，rules 檔選 firestore.rules
+firebase deploy --only firestore:rules
 ```
 
 ### 4. 部署至 GitHub Pages

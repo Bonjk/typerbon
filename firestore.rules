@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 文章
+    match /articles/{id} {
+      allow read, write: if true;
+    }
+
+    // 學生練習紀錄（只允許新增，不允許修改或刪除）
+    match /records/{studentId}/sessions/{sessionId} {
+      allow read: if true;
+      allow create: if true;
+    }
+
+    // 排行榜（含考試成績，以 exam_ 前綴區分）
+    match /leaderboard/{id} {
+      allow read, write: if true;
+    }
+
+    // 系統設定（教師密碼、進行中考試、seed 版本）
+    match /settings/{doc} {
+      allow read, write: if true;
+    }
+
+    // 考試記錄（考試結束時自動寫入）
+    match /examRecords/{id} {
+      allow read, write: if true;
+    }
+
+  }
+}
