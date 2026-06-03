@@ -267,7 +267,13 @@ function handleTypingInput() {
   }
 
   if (typed.length > target.length) {
-    $("typing-input").value = typed.slice(0, target.length);
+    const clipped = typed.slice(0, target.length);
+    $("typing-input").value = clipped;
+    // Setting .value programmatically does not fire 'input', so check finish here.
+    if (clipped === target) {
+      if (state.examMode) submitExam(clipped);
+      else                finishSession(clipped);
+    }
     return;
   }
 
