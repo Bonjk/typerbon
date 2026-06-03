@@ -73,6 +73,100 @@
   --nav-bg:      rgba(30,33,53,.92);
 }
 
+/* ── JERSEY THEME (白 > 黑 >> 橘) ────────────────── */
+[data-theme="jersey"] {
+  --bg:          #F8F7F2;
+  --bg2:         #EEEDEA;
+  --bg3:         #E6E4DE;
+  --card:        #FFFFFF;
+  --border:      #D0CCC4;
+  --border-hi:   #9A9690;
+  --text:        #1A1A2A;
+  --text-muted:  #4A4858;
+  --text-dim:    #C4C0B8;
+  --accent:      #E87820;
+  --accent2:     #3ecf8e;
+  --danger:      #f25f5c;
+  --warn:        #f5a442;
+  --blue:        #5b9cf6;
+  --nav-bg:      #1A1A2A;
+}
+[data-theme="jersey"] .login-bg {
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #1a1a2a 0%, var(--bg) 70%);
+}
+/* Dark navbar needs light-coloured elements */
+[data-theme="jersey"] .nav-student-id {
+  color: rgba(255,255,255,.55);
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.14);
+}
+[data-theme="jersey"] .btn-logout {
+  color: rgba(255,255,255,.45);
+  border-color: rgba(255,255,255,.14);
+}
+[data-theme="jersey"] .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+[data-theme="jersey"] .theme-select {
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.14);
+  color: rgba(255,255,255,.55);
+}
+/* Orange accent touches */
+[data-theme="jersey"] .tab.active {
+  border-top: 2.5px solid var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+[data-theme="jersey"] .section-card  { border-left: 3px solid var(--accent); }
+[data-theme="jersey"] .typing-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232,120,32,.1);
+}
+[data-theme="jersey"] .result-stat.primary {
+  border-left: 3px solid var(--accent);
+  background: rgba(232,120,32,.04);
+}
+
+/* ── LIGHT PURPLE THEME ──────────────────────────── */
+[data-theme="light-purple"] {
+  --bg:          #F7F6FB;
+  --bg2:         #EFEDF6;
+  --bg3:         #E8E4F2;
+  --card:        #FFFFFF;
+  --border:      #D9D2EA;
+  --border-hi:   #C1B6DD;
+  --text:        #2A2550;
+  --text-muted:  #6B6488;
+  --text-dim:    #C9BFE1;
+  --accent:      #8B78C8;
+  --accent2:     #3ecf8e;
+  --danger:      #f25f5c;
+  --warn:        #f5a442;
+  --blue:        #5b9cf6;
+  --nav-bg:      rgba(247,246,251,.95);
+}
+[data-theme="light-purple"] .login-bg {
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #c1b6dd 0%, var(--bg) 70%);
+}
+[data-theme="light-purple"] .char-default { color: #a8a0c0; }
+
+/* ── DARK PURPLE THEME ───────────────────────────── */
+[data-theme="dark-purple"] {
+  --bg:          #1C1A2E;
+  --bg2:         #222040;
+  --bg3:         #2D2B45;
+  --card:        #252340;
+  --border:      #3D3960;
+  --border-hi:   #5A5688;
+  --text:        #E8E6F5;
+  --text-muted:  #9992AA;
+  --text-dim:    #4A4870;
+  --accent:      #C9BFE1;
+  --accent2:     #3ecf8e;
+  --danger:      #f25f5c;
+  --warn:        #f5a442;
+  --blue:        #5b9cf6;
+  --nav-bg:      rgba(28,26,46,.92);
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -270,29 +364,21 @@ body {
 
 .nav-info { display: flex; align-items: center; gap: 12px; }
 
-.theme-switcher {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
+.theme-select {
   background: var(--bg3);
   border: 1px solid var(--border);
-  border-radius: 7px;
-}
-.theme-btn {
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  font-family: var(--font-mono);
+  border-radius: 6px;
   color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 10px;
   cursor: pointer;
-  transition: background .15s, color .15s;
-  letter-spacing: .04em;
+  outline: none;
+  transition: border-color .15s, color .15s;
 }
-.theme-btn:hover  { background: var(--bg2); color: var(--text); }
-.theme-btn.active { background: var(--accent); color: var(--bg); }
+.theme-select:hover { border-color: var(--border-hi); color: var(--text); }
+.theme-select:focus { border-color: var(--accent); }
 
 .nav-student-id {
   font-family: var(--font-mono);

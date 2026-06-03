@@ -52,8 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => applyFontSize(btn.dataset.size)));
   initFontSize();
 
-  document.querySelectorAll(".theme-btn").forEach(btn =>
-    btn.addEventListener("click", () => applyTheme(btn.dataset.theme)));
+  $("theme-select").addEventListener("change", e => applyTheme(e.target.value));
   initTheme();
 
   $("typing-input").addEventListener("paste",   e => e.preventDefault());
@@ -834,8 +833,8 @@ function initTheme() {
 }
 function applyTheme(theme) {
   document.body.dataset.theme = theme;
-  document.querySelectorAll(".theme-btn").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.theme === theme));
+  const sel = $("theme-select");
+  if (sel) sel.value = theme;
   localStorage.setItem("typerbon_theme", theme);
 }
 

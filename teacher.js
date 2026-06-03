@@ -12,15 +12,14 @@ function initTheme() {
 }
 function applyTheme(theme) {
   document.body.dataset.theme = theme;
-  document.querySelectorAll(".theme-btn").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.theme === theme));
+  const sel = document.getElementById("theme-select");
+  if (sel) sel.value = theme;
   localStorage.setItem("typerbon_theme", theme);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
-  document.querySelectorAll(".theme-btn").forEach(btn =>
-    btn.addEventListener("click", () => applyTheme(btn.dataset.theme)));
+  $("theme-select").addEventListener("change", e => applyTheme(e.target.value));
 
   $("btn-teacher-login").addEventListener("click", handleTeacherLogin);
   $("teacher-pw").addEventListener("keydown", e => { if (e.key === "Enter") handleTeacherLogin(); });
