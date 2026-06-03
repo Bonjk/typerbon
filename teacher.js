@@ -7,7 +7,21 @@ import { ArticleStore, RecordStore, ExamStore, TeacherAuth,
 const teacherState = { editingId: null, leaderboardCache: null, examArticles: null };
 const $ = id => document.getElementById(id);
 
+function initTheme() {
+  applyTheme(localStorage.getItem("typerbon_theme") || "dark");
+}
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  document.querySelectorAll(".theme-btn").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.theme === theme));
+  localStorage.setItem("typerbon_theme", theme);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  document.querySelectorAll(".theme-btn").forEach(btn =>
+    btn.addEventListener("click", () => applyTheme(btn.dataset.theme)));
+
   $("btn-teacher-login").addEventListener("click", handleTeacherLogin);
   $("teacher-pw").addEventListener("keydown", e => { if (e.key === "Enter") handleTeacherLogin(); });
   $("btn-teacher-logout").addEventListener("click", () => {

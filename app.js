@@ -52,6 +52,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => applyFontSize(btn.dataset.size)));
   initFontSize();
 
+  document.querySelectorAll(".theme-btn").forEach(btn =>
+    btn.addEventListener("click", () => applyTheme(btn.dataset.theme)));
+  initTheme();
+
   $("typing-input").addEventListener("paste",   e => e.preventDefault());
   $("typing-input").addEventListener("input", handleTypingInput);
   $("typing-input").addEventListener("keydown", e => {
@@ -809,6 +813,17 @@ function applyFontSize(size) {
   document.querySelectorAll(".fs-btn").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.size === size));
   localStorage.setItem("typerbon_font_size", size);
+}
+
+// ── THEME ─────────────────────────────────────────────────
+function initTheme() {
+  applyTheme(localStorage.getItem("typerbon_theme") || "dark");
+}
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  document.querySelectorAll(".theme-btn").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.theme === theme));
+  localStorage.setItem("typerbon_theme", theme);
 }
 
 // ── CONTENT NORMALISATION ─────────────────────────────────
