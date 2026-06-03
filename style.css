@@ -882,6 +882,8 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
   padding: 8px 14px;
   align-items: center;
 }
+/* Columns 4+ (score onwards) right-aligned in both header and data rows */
+.exam-grid > *:nth-child(n+4) { text-align: right; }
 .lb-row:hover { background: var(--bg3); }
 .lb-row.lb-self {
   background: rgba(245,200,66,.07);
