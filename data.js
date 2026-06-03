@@ -326,10 +326,10 @@ const TeacherAuth = {
 function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium', completion = 100) {
   const D = ({ easy: 0.90, medium: 0.95, hard: 1.00 })[difficulty] ?? 1.00;
   const aScore = Math.pow(netAcc / 100, 2) * 100;
-  const w = wpm >= 30 ? 100
-    : wpm >= 20 ? 80 + 2 * (wpm - 20)
-    : wpm >= 10 ? 60 + 2 * (wpm - 10)
-    : 6 * wpm;
+  const w = wpm >= 25 ? 100
+    : wpm >= 15 ? 80 + 2 * (wpm - 15)
+    : wpm >= 8  ? 60 + (20 / 7) * (wpm - 8)
+    : 7.5 * wpm;
   const g = Math.pow(Math.min(grossAcc, 100) / 100, 0.3);
   return Math.round((aScore * 0.649 + w * 0.351) * g * D * completion);
 }
