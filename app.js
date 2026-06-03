@@ -25,6 +25,10 @@ const state = {
   examSubmitted: false,
   pendingExam: null,
   examArticles: null,       // { easy, medium, hard } during active exam
+  wpmHistory:    [],        // [{t, wpm}, ...] live chart data points
+  lastChartPush: 0,         // elapsed seconds of last chart push
+  wpmChart:      null,      // Chart.js live instance
+  historyChart:  null,      // Chart.js history instance
 };
 
 const $ = id => document.getElementById(id);
@@ -215,6 +219,9 @@ function showTypingArea(article) {
   $("typing-input").value = "";
   $("typing-input").focus();
   updateLiveStats(0, 0, 100);
+  const total = state.currentArticle.content.length;
+  $("typing-progress-label").textContent = `0 / ${total}`;
+  initLiveChart();
 }
 
 function resetSessionState() {
@@ -226,6 +233,13 @@ function resetSessionState() {
   state.letterStats = {};
   state.totalTyped = 0;
   state.grossKeystrokes = 0;
+  state.wpmHistory    = [];
+  state.lastChartPush = 0;
+  if (state.wpmChart) { state.wpmChart.destroy(); state.wpmChart = null; }
+  $("wpm-chart-wrap").style.display    = "none";
+  $("session-chart-wrap").style.display = "none";
+  $("typing-progress-fill").style.width  = "0%";
+  $("typing-progress-label").textContent = "0 / 0";
 }
 
 function renderReference(text, cursorPos) {
@@ -300,6 +314,7 @@ function handleTypingInput() {
   state.totalTyped = typed.length;
 
   renderReference(target, typed.length);
+  updateProgressBar(typed.length, target.length);
   updateLiveWpm();
 
   if (typed === target) {
@@ -313,6 +328,11 @@ function tickTimer() {
   state.elapsed = (Date.now() - state.startTime) / 1000;
   $("live-time").textContent = Math.round(state.elapsed) + "s";
   updateLiveWpm();
+  const secMark = Math.floor(state.elapsed / 10) * 10;
+  if (secMark > 0 && secMark > state.lastChartPush) {
+    state.lastChartPush = secMark;
+    pushWpmPoint(secMark, parseInt($("live-wpm").textContent) || 0);
+  }
 }
 
 function updateLiveWpm() {
@@ -412,6 +432,7 @@ function showResults(session) {
   const dMap = { easy: "×0.90（初級）", medium: "×0.95（中級）", hard: "×1.00（高級）" };
   $("res-difficulty").textContent = dMap[session.difficulty] ?? "×1.00";
 
+  renderSessionChart();
   renderLetterBreakdown(session.letterStats);
 }
 
@@ -481,6 +502,8 @@ async function renderHistory() {
       <span class="hr-wpm">${r.wpm} WPM</span>
       <span class="hr-acc">${r.accuracy}%</span>
     </div>`).join("");
+
+  renderHistoryChart(records);
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────
@@ -699,6 +722,7 @@ async function submitExam(typed, isFinal = false) {
   $("res-gross-acc").textContent  = grossAcc + "%";
   const dMap2 = { easy: "×0.90（初級）", medium: "×0.95（中級）", hard: "×1.00（高級）" };
   $("res-difficulty").textContent = dMap2[result.difficulty] ?? "×1.00";
+  renderSessionChart();
   renderLetterBreakdown(result.letterStats);
 
   $("btn-submit-exam").style.display = "none";
@@ -830,6 +854,127 @@ function applyFontSize(size) {
   document.querySelectorAll(".fs-btn").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.size === size));
   localStorage.setItem("typerbon_font_size", size);
+}
+
+// ── PROGRESS BAR ──────────────────────────────────────────
+function updateProgressBar(pos, total) {
+  const pct = total > 0 ? (pos / total * 100).toFixed(1) : 0;
+  $("typing-progress-fill").style.width  = pct + "%";
+  $("typing-progress-label").textContent = `${pos} / ${total}`;
+}
+
+// ── WPM CHARTS ────────────────────────────────────────────
+function chartColors() {
+  const s = getComputedStyle(document.body);
+  return {
+    accent:    s.getPropertyValue("--accent").trim()    || "#f5c842",
+    accent2:   s.getPropertyValue("--accent2").trim()   || "#3ecf8e",
+    muted:     s.getPropertyValue("--text-muted").trim()|| "#7a8394",
+    border:    s.getPropertyValue("--border").trim()    || "#2e333d",
+    bg2:       s.getPropertyValue("--bg2").trim()       || "#15171a",
+  };
+}
+
+function initLiveChart() {
+  if (typeof Chart === "undefined") return;
+  const canvas = $("wpm-live-chart");
+  if (!canvas) return;
+  if (state.wpmChart) { state.wpmChart.destroy(); state.wpmChart = null; }
+  const c = chartColors();
+  state.wpmChart = new Chart(canvas, {
+    type: "line",
+    data: { labels: [], datasets: [{ label: "WPM", data: [],
+      borderColor: c.accent, backgroundColor: c.accent + "25",
+      borderWidth: 2, pointRadius: 3, fill: true, tension: 0.4 }] },
+    options: {
+      animation: { duration: 0 }, responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: c.border + "66" },
+             ticks: { color: c.muted, font: { size: 10 } } },
+        x: { grid: { color: c.border + "66" },
+             ticks: { color: c.muted, font: { size: 10 } } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+function pushWpmPoint(sec, wpm) {
+  if (typeof Chart === "undefined") return;
+  state.wpmHistory.push({ t: sec, wpm });
+  if (!state.wpmChart) return;
+  state.wpmChart.data.labels.push(sec + "s");
+  state.wpmChart.data.datasets[0].data.push(wpm);
+  state.wpmChart.update("none");
+  if (state.wpmHistory.length === 1) $("wpm-chart-wrap").style.display = "";
+}
+
+function renderSessionChart() {
+  if (typeof Chart === "undefined" || !state.wpmHistory.length) return;
+  const canvas = $("wpm-session-chart");
+  if (!canvas) return;
+  const c = chartColors();
+  new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: state.wpmHistory.map(p => p.t + "s"),
+      datasets: [{ label: "WPM", data: state.wpmHistory.map(p => p.wpm),
+        borderColor: c.accent, backgroundColor: c.accent + "25",
+        borderWidth: 2, pointRadius: 3, fill: true, tension: 0.4 }],
+    },
+    options: {
+      animation: { duration: 300 }, responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: c.border + "66" },
+             ticks: { color: c.muted, font: { size: 10 } } },
+        x: { grid: { color: c.border + "66" },
+             ticks: { color: c.muted, font: { size: 10 } } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+  $("session-chart-wrap").style.display = "";
+}
+
+function renderHistoryChart(records) {
+  if (typeof Chart === "undefined") return;
+  const canvas = $("history-chart");
+  const wrap   = $("history-chart-wrap");
+  if (!canvas || !wrap) return;
+  if (state.historyChart) { state.historyChart.destroy(); state.historyChart = null; }
+
+  const sessions = records.filter(r => !r.isExamResult).slice(0, 20).reverse();
+  if (sessions.length < 2) { wrap.style.display = "none"; return; }
+  wrap.style.display = "";
+
+  const c = chartColors();
+  const labels  = sessions.map(s => formatDate(s.ts).slice(5, 10));
+  state.historyChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "WPM", data: sessions.map(s => s.wpm),
+          borderColor: c.accent,  backgroundColor: c.accent  + "20",
+          borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: "y" },
+        { label: "正確率 %", data: sessions.map(s => s.accuracy),
+          borderColor: c.accent2, backgroundColor: c.accent2 + "20",
+          borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: "y2" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y:  { beginAtZero: true, title: { display: true, text: "WPM", color: c.muted },
+              grid: { color: c.border + "66" }, ticks: { color: c.muted, font: { size: 10 } } },
+        y2: { position: "right", min: 0, max: 100,
+              title: { display: true, text: "正確率 %", color: c.muted },
+              grid: { display: false }, ticks: { color: c.muted, font: { size: 10 } } },
+        x:  { grid: { color: c.border + "66" }, ticks: { color: c.muted, font: { size: 10 } } },
+      },
+      plugins: { legend: { labels: { color: c.muted, font: { size: 11 } } } },
+    },
+  });
 }
 
 // ── THEME ─────────────────────────────────────────────────
