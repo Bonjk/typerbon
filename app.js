@@ -964,6 +964,7 @@ function renderHistoryChart(records) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 12 } },
       scales: {
         y:  { beginAtZero: true, title: { display: true, text: "WPM", color: c.muted },
               grid: { color: c.border + "66" }, ticks: { color: c.muted, font: { size: 10 } } },
