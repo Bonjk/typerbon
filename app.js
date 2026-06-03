@@ -81,7 +81,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("btn-retry").style.display = "";
     $("btn-retry").textContent = "再試一次";
     $("btn-choose-another").textContent = "選其他文章";
-    $("res-completion-row").style.display = "none";
+    $("res-completion-row").style.display        = "none";
+    $("res-completion-factor-row").style.display = "none";
     renderArticleList();
     checkActiveExam();
   });
@@ -351,7 +352,9 @@ async function finishSession(typed) {
     ts: Date.now(),
     articleId:    state.currentArticle.id,
     articleTitle: state.currentArticle.title,
+    difficulty:   state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc, score,
+    completionFactor,
     elapsed: Math.round(elapsed),
     letterStats: { ...state.letterStats },
   };
@@ -389,7 +392,6 @@ function showResults(session) {
   $("typing-area").style.display = "none";
   $("result-card").style.display = "block";
   $("result-title").textContent  = "練習完成！";
-  $("res-completion-row").style.display = "none";
 
   const grade = session.score >= 8500 ? "優秀"
     : session.score >= 7000 ? "不錯"
@@ -399,6 +401,13 @@ function showResults(session) {
   $("res-wpm").textContent   = session.wpm + " WPM";
   $("res-acc").textContent   = session.accuracy + "%";
   $("res-time").textContent  = session.elapsed + "s";
+
+  $("res-completion-row").style.display        = "none";
+  $("res-completion-factor-row").style.display = "";
+  $("res-completion-factor").textContent = session.completionFactor ?? "—";
+  $("res-gross-acc").textContent         = (session.grossAccuracy ?? session.accuracy) + "%";
+  const dMap = { easy: "×0.90（初級）", medium: "×0.95（中級）", hard: "×1.00（高級）" };
+  $("res-difficulty").textContent = dMap[session.difficulty] ?? "×1.00";
 
   renderLetterBreakdown(session.letterStats);
 }
@@ -680,8 +689,12 @@ async function submitExam(typed, isFinal = false) {
   $("res-wpm").textContent          = wpm + " WPM";
   $("res-acc").textContent          = acc + "%";
   $("res-time").textContent         = Math.round(elapsed) + "s";
-  $("res-completion-row").style.display = "";
-  $("res-completion").textContent   = completion + "%";
+  $("res-completion-row").style.display         = "";
+  $("res-completion").textContent               = completion + "%";
+  $("res-completion-factor-row").style.display  = "none";
+  $("res-gross-acc").textContent  = grossAcc + "%";
+  const dMap2 = { easy: "×0.90（初級）", medium: "×0.95（中級）", hard: "×1.00（高級）" };
+  $("res-difficulty").textContent = dMap2[result.difficulty] ?? "×1.00";
   renderLetterBreakdown(result.letterStats);
 
   $("btn-submit-exam").style.display = "none";
