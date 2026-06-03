@@ -73,6 +73,30 @@
   --nav-bg:      rgba(30,33,53,.92);
 }
 
+/* ── INDIGO THEME (direct Coolors palette) ───────── */
+/* Twilight Indigo #3a405a is the dominant background;
+   Royal Gold / Thistle / Frosted Blue / Light Sea Green used as-is. */
+[data-theme="indigo"] {
+  --bg:          #3a405a;
+  --bg2:         #454b6a;
+  --bg3:         #545b7a;
+  --card:        #4a5170;
+  --border:      #6070a0;
+  --border-hi:   #8090c8;
+  --text:        #f5f5fa;
+  --text-muted:  #bfb1c1;
+  --text-dim:    #8090b8;
+  --accent:      #ffe66d;
+  --accent2:     #00a9a5;
+  --danger:      #f25f5c;
+  --warn:        #f5a442;
+  --blue:        #8ee3ef;
+  --nav-bg:      rgba(58,64,90,.95);
+}
+[data-theme="indigo"] .login-bg {
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #454b6a 0%, var(--bg) 70%);
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
