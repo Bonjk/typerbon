@@ -538,7 +538,7 @@ async function checkActiveExam() {
   }
 
   state.pendingExam = exam;
-  $("exam-banner-text").textContent = `${exam.classCode} 班考試進行中（10 分鐘）`;
+  $("exam-banner-text").textContent = `${exam.classCode} 班考試進行中（15 分鐘）`;
   banner.style.display = "flex";
 }
 
@@ -598,7 +598,7 @@ function startActualExam(article) {
 
   const isFirstAttempt = !state.examDeadline;
   if (isFirstAttempt) {
-    state.examDeadline = Date.now() + 10 * 60 * 1000;
+    state.examDeadline = Date.now() + 15 * 60 * 1000;
     startExamCountdown();
   }
 
