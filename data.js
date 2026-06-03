@@ -11,7 +11,7 @@
 import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc,
          getDocs, addDoc, updateDoc, deleteDoc,
-         setDoc, getDoc, query, orderBy, limit,
+         setDoc, getDoc, query, orderBy,
          serverTimestamp, onSnapshot }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const _app = initializeApp(FIREBASE_CONFIG);
@@ -242,24 +242,24 @@ const RecordStore = {
 
   /** 排行榜：取前 50 名（依最高分排序，排除考試紀錄） */
   async getLeaderboard(topN = 50) {
-    const snap = await getDocs(
-      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"), limit(topN + 100))
-    );
+    // Use getDocs without orderBy: Firestore excludes documents that are
+    // missing the queried field, causing some students to disappear silently.
+    const snap = await getDocs(collection(db, "leaderboard"));
     return snap.docs
       .map(d => d.data())
-      .filter(d => !d.isExamResult)
+      .filter(d => !d.isExamResult && d.bestScore != null)
+      .sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0))
       .slice(0, topN)
       .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
   /** 取得全部排行榜（教師用、班級篩選用，排除考試紀錄） */
   async getAllLeaderboard() {
-    const snap = await getDocs(
-      query(collection(db, "leaderboard"), orderBy("bestScore", "desc"))
-    );
+    const snap = await getDocs(collection(db, "leaderboard"));
     return snap.docs
       .map(d => d.data())
-      .filter(d => !d.isExamResult)
+      .filter(d => !d.isExamResult && d.bestScore != null)
+      .sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0))
       .map((d, i) => ({ rank: i + 1, ...d }));
   },
 
