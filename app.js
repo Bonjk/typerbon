@@ -103,6 +103,10 @@ function handleLogin() {
 }
 
 function loginAs(id) {
+  const prevId = sessionStorage.getItem("typerbon_student");
+  if (prevId && prevId !== id) {
+    sessionStorage.removeItem("typerbon_student");
+  }
   state.studentId = id;
   sessionStorage.setItem("typerbon_student", id);
   $("nav-student-id").textContent = `班級座號：${id}`;
@@ -577,6 +581,7 @@ function showExamArticleModal(articles) {
 
 function showExamConfirmModal(article) {
   $("exam-confirm-overlay").style.display = "flex";
+  $("exam-rule-student-id").textContent = state.studentId || "—";
   const checkbox = $("exam-rules-check");
   checkbox.checked = false;
   document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = true; });
