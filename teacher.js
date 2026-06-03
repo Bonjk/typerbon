@@ -527,35 +527,93 @@ async function loadExamResults(examId) {
   const container = $("exam-results-container");
   container.innerHTML = `<div class="loading-state">載入成績中...</div>`;
 
-  const results = await ExamStore.getResults(examId);
-  if (!results.length) {
+  const allResults = await ExamStore.getResults(examId);
+  if (!allResults.length) {
     container.innerHTML = `<div class="empty-state">目前尚無學生提交成績</div>`;
     return;
   }
 
+  renderExamResultsTable(examId, allResults, "");
+}
+
+function renderExamResultsTable(examId, allResults, classFilter) {
+  const container = $("exam-results-container");
+  const filtered  = classFilter
+    ? allResults.filter(r => r.studentId?.startsWith(classFilter))
+    : allResults;
+
   const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
-  const cols = "grid-template-columns:52px 1fr 52px 90px 80px 70px 70px 52px";
 
   container.innerHTML = `
-    <div class="sr-header">考試成績 — 共 ${results.length} 人提交</div>
-    <div class="lb-header" style="${cols}">
-      <span>名次</span><span>班級座號</span><span>難度</span>
-      <span>分數</span><span>WPM</span><span>淨正確率</span><span>完成度</span><span>操作</span>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <span class="sr-header" style="margin:0">考試成績 — 共 ${allResults.length} 人提交</span>
+      <input type="text" id="exam-result-class-filter"
+             placeholder="班級篩選（三碼）" maxlength="3"
+             value="${escHtml(classFilter)}"
+             style="width:130px;padding:5px 10px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono)" />
+      <button class="btn-secondary btn-sm" id="btn-exam-filter-apply">篩選</button>
+      ${classFilter ? `<button class="btn-secondary btn-sm" id="btn-exam-filter-clear">清除</button>` : ""}
+      <button class="btn-secondary btn-sm" id="btn-exam-export-excel" style="margin-left:auto">匯出 Excel</button>
     </div>
-    ${results.map(r => `
-      <div class="lb-row" style="${cols}">
-        <span class="lb-rank">${r.rank}</span>
+    ${classFilter ? `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">顯示 ${filtered.length} / ${allResults.length} 筆</div>` : ""}
+    <div class="exam-grid lb-header">
+      <span>名次</span><span>班級座號</span><span>難度</span>
+      <span>分數</span><span>WPM</span><span>淨正確率</span><span>毛正確率</span><span>完成度</span><span>操作</span>
+    </div>
+    ${filtered.map((r, idx) => `
+      <div class="exam-grid lb-row">
+        <span class="lb-rank">${idx + 1}</span>
         <span class="lb-id">${escHtml(r.studentId)}</span>
         <span style="font-size:.78rem;color:var(--text-muted)">${diffLabel[r.difficulty] || "—"}</span>
         <span class="lb-score">${r.score}</span>
         <span class="lb-wpm">${r.wpm} WPM</span>
         <span class="lb-acc">${r.accuracy}%</span>
+        <span class="lb-acc">${r.grossAccuracy != null ? r.grossAccuracy + "%" : "—"}</span>
         <span class="lb-acc">${r.completion}%</span>
-        <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="重設全部，允許重新進入考試">重設</button>
+        <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="重設全部">重設</button>
       </div>`).join("")}`;
 
   container.querySelectorAll("[data-retake]").forEach(btn =>
     btn.addEventListener("click", () => retakeStudent(examId, btn.dataset.retake)));
+
+  $("btn-exam-filter-apply").addEventListener("click", () =>
+    renderExamResultsTable(examId, allResults, $("exam-result-class-filter").value.trim()));
+  $("exam-result-class-filter").addEventListener("keydown", e => {
+    if (e.key === "Enter")
+      renderExamResultsTable(examId, allResults, $("exam-result-class-filter").value.trim());
+  });
+  const clearBtn = $("btn-exam-filter-clear");
+  if (clearBtn) clearBtn.addEventListener("click", () => renderExamResultsTable(examId, allResults, ""));
+  $("btn-exam-export-excel").addEventListener("click", () =>
+    exportExamExcel(examId, filtered, classFilter));
+}
+
+function exportExamExcel(examId, results, classFilter) {
+  if (typeof XLSX === "undefined") {
+    showToast("Excel 函式庫尚未載入，請確認網路連線後重新整理");
+    return;
+  }
+  const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+  const rows = results.map((r, i) => ({
+    名次:    i + 1,
+    班級座號: r.studentId,
+    班級:    r.studentId?.slice(0, 3) || "",
+    難度:    diffLabel[r.difficulty] || r.difficulty || "",
+    分數:    r.score,
+    WPM:    r.wpm,
+    淨正確率: r.accuracy != null ? r.accuracy + "%" : "",
+    毛正確率: r.grossAccuracy != null ? r.grossAccuracy + "%" : "",
+    完成度:  r.completion != null ? r.completion + "%" : "",
+    花費秒數: r.elapsed,
+    文章名稱: r.articleTitle || "",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "考試成績");
+  const suffix = classFilter ? `_${classFilter}班` : "_全部";
+  const ts = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `考試成績${suffix}_${ts}.xlsx`);
 }
 
 async function retakeStudent(examId, studentId) {
