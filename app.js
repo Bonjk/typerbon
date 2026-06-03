@@ -198,7 +198,7 @@ async function renderArticleList() {
 
 // ── TYPING SESSION ────────────────────────────────────────
 function showTypingArea(article) {
-  state.currentArticle = article;
+  state.currentArticle = { ...article, content: normalizeContent(article.content) };
   resetSessionState();
   $("article-title-display").textContent = article.title;
   $("typing-area").style.display = "block";
@@ -803,6 +803,19 @@ function applyFontSize(size) {
   document.querySelectorAll(".fs-btn").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.size === size));
   localStorage.setItem("typerbon_font_size", size);
+}
+
+// ── CONTENT NORMALISATION ─────────────────────────────────
+// Replaces typographic characters with ASCII equivalents so
+// keyboard input always matches the reference text.
+function normalizeContent(text) {
+  return text
+    .replace(/[''ʼ]/g, "'")
+    .replace(/[""]/g,   '"')
+    .replace(/—/g,      '--')
+    .replace(/–/g,      '-')
+    .replace(/…/g,      '...')
+    .replace(/ /g,      ' ');   // non-breaking space → space
 }
 
 // ── UTILS ─────────────────────────────────────────────────
