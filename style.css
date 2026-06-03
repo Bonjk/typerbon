@@ -36,7 +36,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 19px;
   line-height: 1.6;
   min-height: 100vh;
 }
@@ -437,12 +437,12 @@ body {
 
 /* Font size variants (applied via data-font-size on body) */
 body[data-font-size="sm"] .reference-box,
-body[data-font-size="sm"] .typing-input { font-size: 13px; }
-/* md = default (1rem ≈ 15px), no override */
+body[data-font-size="sm"] .typing-input { font-size: 17px; }
+/* md = default (19px body), no override needed */
 body[data-font-size="lg"] .reference-box,
-body[data-font-size="lg"] .typing-input { font-size: 17px; }
+body[data-font-size="lg"] .typing-input { font-size: 21px; }
 body[data-font-size="xl"] .reference-box,
-body[data-font-size="xl"] .typing-input { font-size: 19px; }
+body[data-font-size="xl"] .typing-input { font-size: 23px; }
 
 /* Char highlighting states */
 .char-default  { color: var(--text-dim); }
