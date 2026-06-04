@@ -31,6 +31,7 @@ const state = {
   historyChart:  null,      // Chart.js history instance
   studentProfile: null,     // cached Firestore student profile
   noBackspace:   true,      // tracks whether Backspace was pressed this session
+  isComposing:   false,     // true during IME composition; prevents off-by-one rendering
 };
 
 const $ = id => document.getElementById(id);
@@ -61,7 +62,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("theme-select").addEventListener("change", e => applyTheme(e.target.value));
   initTheme();
 
-  $("typing-input").addEventListener("paste",   e => e.preventDefault());
+  $("typing-input").addEventListener("paste",            e => e.preventDefault());
+  $("typing-input").addEventListener("compositionstart", () => { state.isComposing = true; });
+  $("typing-input").addEventListener("compositionend",   () => { state.isComposing = false; handleTypingInput(); });
   $("typing-input").addEventListener("input", handleTypingInput);
   $("typing-input").addEventListener("keydown", e => {
     if (state.isFinished || !state.currentArticle) return;
@@ -290,6 +293,7 @@ function renderReference(text, cursorPos) {
 
 function handleTypingInput() {
   if (state.isFinished) return;
+  if (state.isComposing)  return;   // wait for IME composition to commit
   const typed  = $("typing-input").value;
   const target = state.currentArticle.content;
 
