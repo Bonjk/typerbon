@@ -464,6 +464,78 @@ const ExamStore = {
   },
 };
 
-export { db, ArticleStore, RecordStore, ExamStore, TeacherAuth,
-         calcScore, countWords, formatDate, validateStudentId, showToast };
+// ── 成就定義 ───────────────────────────────────────────────
+const ACHIEVEMENTS = [
+  // 速度
+  { id: "first_session",  category: "speed",    name: "第一步",              desc: "完成第一次練習",                hidden: false },
+  { id: "speed_10",       category: "speed",    name: "穩步前進",            desc: "單次達到 10 WPM",               hidden: false },
+  { id: "speed_15",       category: "speed",    name: "超越門檻",            desc: "單次達到 15 WPM",               hidden: false },
+  { id: "speed_20",       category: "speed",    name: "行雲流水",            desc: "單次達到 20 WPM",               hidden: false },
+  { id: "speed_25",       category: "speed",    name: "快意飛騰",            desc: "單次達到 25 WPM",               hidden: false },
+  // 正確率
+  { id: "accuracy_100",   category: "accuracy", name: "謹慎嚴謹",            desc: "任一次淨正確率 100%",           hidden: false },
+  { id: "accuracy_streak",category: "accuracy", name: "穩定發揮",            desc: "連續 5 次正確率 ≥ 95%",        hidden: false },
+  // 堅持
+  { id: "sessions_5",     category: "persist",  name: "勇於嘗試",            desc: "完成 5 次練習",                 hidden: false },
+  { id: "sessions_20",    category: "persist",  name: "打字達人",            desc: "完成 20 次練習",                hidden: false },
+  { id: "sessions_50",    category: "persist",  name: "百鍊成鋼",            desc: "完成 50 次練習",                hidden: false },
+  { id: "days_5",         category: "persist",  name: "持之以恆",            desc: "在 5 個不同日期練習過",         hidden: false },
+  // 進步
+  { id: "wpm_record",     category: "progress", name: "突飛猛進",            desc: "超越自己的 WPM 最高紀錄",       hidden: false },
+  // 考試
+  { id: "exam_first",     category: "exam",     name: "初試啼聲",            desc: "完成第一次考試",                hidden: false },
+  { id: "exam_excellent", category: "exam",     name: "金榜題名",            desc: "考試得到優秀（≥ 85 分）",       hidden: false },
+  { id: "exam_hard",      category: "exam",     name: "迎難而上",            desc: "完成一次高級難度考試",          hidden: false },
+  { id: "exam_perfect",   category: "exam",     name: "100是考試的極限，不是我的", desc: "考試得到 100 分",           hidden: false },
+  // 特殊（隱藏）
+  { id: "theme_all",      category: "special",  name: "主題探索家",          desc: "試用過所有 6 種主題",           hidden: true },
+  { id: "long_article",   category: "special",  name: "長文挑戰者",          desc: "完成一篇 ≥ 120 字的文章",       hidden: true },
+  { id: "exam_early",     category: "special",  name: "不慌不忙",            desc: "考試剩 30% 時間時已完成",       hidden: true },
+  { id: "sixseven",       category: "special",  name: "sixseven!",           desc: "分數尾數為 67",                 hidden: true },
+  { id: "perfect_match",  category: "special",  name: "控分傳奇",            desc: "考試中毛確率 / 淨確率 / 完成度 / 分數四值四捨五入後相同", hidden: true },
+  { id: "no_backspace",   category: "special",  name: "不需要你",            desc: "全程不按 Backspace 完成一篇文章", hidden: true },
+];
+
+// ── StudentStore ───────────────────────────────────────────
+// 學生個人資料：成就、主題偏好、字型大小
+const StudentStore = {
+  _cache: {},
+
+  async get(studentId) {
+    if (this._cache[studentId]) return this._cache[studentId];
+    try {
+      const snap = await getDoc(doc(db, "students", studentId));
+      const data = snap.exists() ? snap.data() : { achievements: [], theme: null, fontSize: null };
+      this._cache[studentId] = data;
+      return data;
+    } catch { return { achievements: [], theme: null, fontSize: null }; }
+  },
+
+  async savePreferences(studentId, prefs) {
+    if (!studentId) return;
+    this._cache[studentId] = { ...(this._cache[studentId] || {}), ...prefs };
+    try {
+      await setDoc(doc(db, "students", studentId),
+        { studentId, ...prefs, updatedAt: serverTimestamp() }, { merge: true });
+    } catch { /* 離線時略過 */ }
+  },
+
+  async awardAchievement(studentId, achievementId) {
+    const profile = await this.get(studentId);
+    if ((profile.achievements || []).includes(achievementId)) return false;
+    const updated = [...(profile.achievements || []), achievementId];
+    this._cache[studentId] = { ...profile, achievements: updated };
+    try {
+      await setDoc(doc(db, "students", studentId),
+        { studentId, achievements: updated, updatedAt: serverTimestamp() }, { merge: true });
+      // 同步成就數至排行榜（供排行榜顯示用）
+      await updateDoc(doc(db, "leaderboard", studentId), { achievementCount: updated.length })
+        .catch(() => {});
+    } catch { /* 離線時略過 */ }
+    return true;
+  },
+};
+
+export { db, ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore,
+         ACHIEVEMENTS, calcScore, countWords, formatDate, validateStudentId, showToast };
 

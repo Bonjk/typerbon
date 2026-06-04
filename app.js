@@ -1,8 +1,8 @@
 /**
  * app.js — 學生端主邏輯（Firebase 版）
  */
-import { ArticleStore, RecordStore, ExamStore,
-         calcScore, countWords, formatDate,
+import { ArticleStore, RecordStore, ExamStore, StudentStore,
+         ACHIEVEMENTS, calcScore, countWords, formatDate,
          validateStudentId, showToast } from "./data.js";
 
 // ── STATE ─────────────────────────────────────────────────
@@ -29,6 +29,8 @@ const state = {
   lastChartPush: 0,         // elapsed seconds of last chart push
   wpmChart:      null,      // Chart.js live instance
   historyChart:  null,      // Chart.js history instance
+  studentProfile: null,     // cached Firestore student profile
+  noBackspace:   true,      // tracks whether Backspace was pressed this session
 };
 
 const $ = id => document.getElementById(id);
@@ -63,6 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("typing-input").addEventListener("input", handleTypingInput);
   $("typing-input").addEventListener("keydown", e => {
     if (state.isFinished || !state.currentArticle) return;
+    if (e.key === "Backspace") { state.noBackspace = false; return; }
     if (e.repeat || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
     state.grossKeystrokes++;
   });
@@ -116,6 +119,12 @@ function loginAs(id) {
   $("nav-student-id").textContent = `班級座號：${id}`;
   $("screen-login").classList.remove("active");
   $("screen-app").style.display = "block";
+  // 從 Firestore 載入學生偏好（主題、字型），Firestore 優先於 localStorage
+  StudentStore.get(id).then(profile => {
+    if (profile.theme)    applyTheme(profile.theme, false);
+    if (profile.fontSize) applyFontSize(profile.fontSize, false);
+    state.studentProfile = profile;
+  });
   renderArticleList();
   checkActiveExam();
 }
@@ -235,6 +244,7 @@ function resetSessionState() {
   state.grossKeystrokes = 0;
   state.wpmHistory    = [];
   state.lastChartPush = 0;
+  state.noBackspace   = true;
   if (state.wpmChart) { state.wpmChart.destroy(); state.wpmChart = null; }
   $("wpm-chart-wrap").style.display    = "none";
   $("session-chart-wrap").style.display = "none";
@@ -849,11 +859,13 @@ function triggerConfetti() {
 function initFontSize() {
   applyFontSize(localStorage.getItem("typerbon_font_size") || "md");
 }
-function applyFontSize(size) {
+function applyFontSize(size, persist = true) {
   document.body.dataset.fontSize = size;
   document.querySelectorAll(".fs-btn").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.size === size));
   localStorage.setItem("typerbon_font_size", size);
+  if (persist && state.studentId)
+    StudentStore.savePreferences(state.studentId, { fontSize: size });
 }
 
 // ── PROGRESS BAR ──────────────────────────────────────────
@@ -980,13 +992,17 @@ function renderHistoryChart(records) {
 
 // ── THEME ─────────────────────────────────────────────────
 function initTheme() {
-  applyTheme(localStorage.getItem("typerbon_theme") || "dark");
+  applyTheme(localStorage.getItem("typerbon_theme") || "dark", false);
 }
-function applyTheme(theme) {
+function applyTheme(theme, persist = true) {
   document.body.dataset.theme = theme;
   const sel = $("theme-select");
   if (sel) sel.value = theme;
   localStorage.setItem("typerbon_theme", theme);
+  if (persist && state.studentId)
+    StudentStore.savePreferences(state.studentId, { theme });
+  // 主題探索家成就：切換主題時檢查是否集齊六種
+  if (persist && state.studentId) checkThemeAllAchievement(theme);
 }
 
 // ── CONTENT NORMALISATION ─────────────────────────────────

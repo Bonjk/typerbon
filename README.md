@@ -67,6 +67,7 @@ service cloud.firestore {
     match /leaderboard/{id}            { allow read, write: if true; }
     match /settings/{doc}              { allow read, write: if true; }
     match /examRecords/{id}            { allow read, write: if true; }
+    match /students/{id}               { allow read, write: if true; }
   }
 }
 ```
@@ -213,6 +214,11 @@ leaderboard/exam_{examId}__{studentId}       # 考試成績
 settings/teacher    → password
 settings/activeExam → id, classCode, status, articles, startedAt
 settings/seeded     → version (目前 3), seededAt
+
+students/{studentId}                         # 學生個人資料
+  studentId, theme, fontSize
+  achievements: [ achievement id 陣列 ]
+  updatedAt
 
 examRecords/{examId}                         # 考試結束後自動儲存
   examId, classCode, startedAt, endedAt
