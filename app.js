@@ -627,8 +627,20 @@ function showExamArticleModal(articles) {
   );
 }
 
+const EXAM_COLORS = [
+  { cls: "btn-confirm-red",    name: "紅色" },
+  { cls: "btn-confirm-orange", name: "橘色" },
+  { cls: "btn-confirm-purple", name: "紫色" },
+  { cls: "btn-confirm-green",  name: "綠色" },
+  { cls: "btn-confirm-blue",   name: "藍色" },
+];
+
 function showExamConfirmModal(article) {
-  // Shuffle button order so purple is in a random position each time
+  // Pick a random colour as the correct one this round
+  const correct = EXAM_COLORS[Math.floor(Math.random() * EXAM_COLORS.length)];
+  $("exam-rule-color").textContent = correct.name;
+
+  // Shuffle button order so position also varies
   const container = document.querySelector(".exam-confirm-btns");
   const btns = [...container.children];
   for (let i = btns.length - 1; i > 0; i--) {
@@ -645,17 +657,11 @@ function showExamConfirmModal(article) {
   checkbox.onchange = () =>
     document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = !checkbox.checked; });
 
-  // Correct button: purple starts the exam
-  $("btn-confirm-purple").onclick = () => {
-    $("exam-confirm-overlay").style.display = "none";
-    startActualExam(article);
-  };
-  // Wrong buttons: alert and return without starting
-  document.querySelectorAll(".btn-exam-confirm:not(#btn-confirm-purple)").forEach(btn => {
-    btn.onclick = () => {
-      $("exam-confirm-overlay").style.display = "none";
-      alert("請確實閱讀考試規則");
-    };
+  // Assign handlers based on which colour is correct this round
+  document.querySelectorAll(".btn-exam-confirm").forEach(btn => {
+    btn.onclick = btn.classList.contains(correct.cls)
+      ? () => { $("exam-confirm-overlay").style.display = "none"; startActualExam(article); }
+      : () => { $("exam-confirm-overlay").style.display = "none"; alert("請確實閱讀考試規則"); };
   });
 }
 
