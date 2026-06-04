@@ -348,14 +348,9 @@ const TeacherAuth = {
   DEFAULT_PW: "teacher123",
 
   async getPassword() {
-    const cached = localStorage.getItem("typerbon_teacher_pw");
-    if (cached) return cached;
     try {
       const snap = await getDoc(doc(db, "settings", "teacher"));
-      if (snap.exists() && snap.data().password) {
-        localStorage.setItem("typerbon_teacher_pw", snap.data().password);
-        return snap.data().password;
-      }
+      if (snap.exists() && snap.data().password) return snap.data().password;
     } catch {}
     return this.DEFAULT_PW;
   },
@@ -375,7 +370,7 @@ const TeacherAuth = {
   async setPassword(newPw) {
     const hashed = await hashPassword(newPw);
     await setDoc(doc(db, "settings", "teacher"), { password: hashed });
-    localStorage.setItem("typerbon_teacher_pw", hashed);
+    localStorage.removeItem("typerbon_teacher_pw"); // never cache; always read from Firestore
   }
 };
 
