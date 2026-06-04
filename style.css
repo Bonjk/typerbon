@@ -1039,8 +1039,14 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
   color:var(--text-muted); margin:14px 0 6px;
 }
 .ach-grid    { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
-.ach-card    { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; }
+.ach-card    { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; position:relative; }
 .ach-earned  { border-color:var(--accent); background:rgba(245,200,66,.06); }
+.ach-done    {
+  position:absolute; top:6px; right:8px;
+  font-size:.62rem; font-weight:700; font-family:var(--font-mono);
+  color:var(--accent); letter-spacing:.06em;
+  text-transform:uppercase;
+}
 .ach-locked  { opacity:.5; }
 .ach-name    { font-weight:700; font-size:.85rem; margin-bottom:4px; }
 .ach-earned .ach-name { color:var(--accent); }

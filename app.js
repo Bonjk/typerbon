@@ -1039,6 +1039,7 @@ async function renderAchievements() {
     for (const a of list) {
       const isEarned = earned.has(a.id);
       html += `<div class="ach-card ${isEarned ? "ach-earned" : "ach-locked"}">
+        ${isEarned ? '<span class="ach-done">完成</span>' : ''}
         <div class="ach-name">${a.name}</div>
         <div class="ach-desc">${isEarned || !a.hidden ? a.desc : "???"}</div>
       </div>`;
