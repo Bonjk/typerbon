@@ -291,7 +291,48 @@ const RecordStore = {
       sessions.forEach(s => rows.push({ studentId: sid, ...s }));
     }
     return rows;
-  }
+  },
+
+  /** 教師用：清除所有學生的練習紀錄與排行榜 */
+  async deleteAllStudents() {
+    const ids = await this.getAllStudentIds();
+    for (const sid of ids) {
+      const sessSnap = await getDocs(collection(db, "records", sid, "sessions"));
+      await Promise.all(sessSnap.docs.map(d => deleteDoc(d.ref)));
+      await deleteDoc(doc(db, "leaderboard", sid));
+    }
+  },
+
+  /** 教師用：班級升年級（重命名班級代碼，例如 802 → 902） */
+  async renameClass(oldCode, newCode, onProgress) {
+    const snap = await getDocs(collection(db, "leaderboard"));
+    const targets = snap.docs
+      .filter(d => !d.data().isExamResult && d.id.startsWith(oldCode))
+      .map(d => ({ id: d.id, data: d.data() }));
+
+    let done = 0;
+    for (const { id: oldId, data: lbData } of targets) {
+      const newId = newCode + oldId.slice(3);
+      // 搬移 sessions
+      const sessSnap = await getDocs(collection(db, "records", oldId, "sessions"));
+      for (const s of sessSnap.docs) {
+        await addDoc(collection(db, "records", newId, "sessions"), s.data());
+        await deleteDoc(s.ref);
+      }
+      // 搬移 leaderboard
+      await setDoc(doc(db, "leaderboard", newId), { ...lbData, studentId: newId, classCode: newCode });
+      await deleteDoc(doc(db, "leaderboard", oldId));
+      // 搬移 students profile
+      const stuSnap = await getDoc(doc(db, "students", oldId));
+      if (stuSnap.exists()) {
+        await setDoc(doc(db, "students", newId), { ...stuSnap.data(), studentId: newId });
+        await deleteDoc(doc(db, "students", oldId));
+      }
+      done++;
+      if (onProgress) onProgress(done, targets.length);
+    }
+    return targets.length;
+  },
 };
 
 // ── TeacherAuth ────────────────────────────────────────────

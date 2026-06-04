@@ -165,6 +165,31 @@
     </div>
 
     <div class="section-card" style="max-width:600px;margin-top:20px">
+      <h2 class="section-title">清除所有學生紀錄</h2>
+      <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:16px">清除全部班級所有學生的練習紀錄與排行榜，此操作無法還原。</p>
+      <button class="btn-danger btn-sm" id="btn-delete-all-records">清除所有學生紀錄</button>
+    </div>
+
+    <div class="section-card" style="max-width:600px;margin-top:20px">
+      <h2 class="section-title">班級升年級</h2>
+      <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:16px">將舊班級代碼的所有學生紀錄遷移至新代碼（例：802 → 902），含練習紀錄與排行榜。</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="min-width:120px">
+          <label>舊班級代碼</label>
+          <input type="text" id="promote-old-code" placeholder="802" maxlength="3" />
+        </div>
+        <span style="align-self:flex-end;padding-bottom:14px;color:var(--text-muted)">→</span>
+        <div class="input-group" style="min-width:120px">
+          <label>新班級代碼</label>
+          <input type="text" id="promote-new-code" placeholder="902" maxlength="3" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-promote-class" style="margin-bottom:1px">開始遷移</button>
+      </div>
+      <span class="input-error" id="promote-error"></span>
+      <p id="promote-progress" style="font-size:.82rem;color:var(--text-muted);margin-top:8px"></p>
+    </div>
+
+    <div class="section-card" style="max-width:600px;margin-top:20px">
       <h2 class="section-title">修改密碼</h2>
       <div style="display:flex;flex-direction:column;gap:16px;max-width:400px">
         <div class="input-group">

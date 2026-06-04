@@ -51,6 +51,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("btn-change-pw").addEventListener("click", changePassword);
   $("btn-delete-student-records").addEventListener("click", deleteStudentRecords);
+  $("btn-delete-all-records").addEventListener("click", deleteAllRecords);
+  $("btn-promote-class").addEventListener("click", promoteClass);
   $("btn-start-exam").addEventListener("click", startExam);
 
   $("btn-lb-query").addEventListener("click", () => {
@@ -786,6 +788,53 @@ function exportRecordExcel(rec) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "考試成績");
   XLSX.writeFile(wb, `考試記錄_${rec.classCode}班_${dateStr}.xlsx`);
+}
+
+// ── TEACHER ADMIN ──────────────────────────────────────────
+async function deleteAllRecords() {
+  if (!confirm("確定要清除「所有學生」的練習紀錄與排行榜？此操作無法復原。")) return;
+  if (!confirm("再次確認：這將刪除所有班級所有學生的紀錄。確定繼續？")) return;
+  const btn = $("btn-delete-all-records");
+  btn.disabled = true; btn.textContent = "清除中...";
+  try {
+    await RecordStore.deleteAllStudents();
+    showToast("已清除所有學生紀錄");
+  } catch (e) {
+    showToast("清除失敗：" + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "清除所有學生紀錄";
+  }
+}
+
+async function promoteClass() {
+  const oldCode = $("promote-old-code").value.trim();
+  const newCode = $("promote-new-code").value.trim();
+  const errEl   = $("promote-error");
+  errEl.textContent = "";
+  if (!/^\d{3}$/.test(oldCode) || !/^\d{3}$/.test(newCode)) {
+    errEl.textContent = "請輸入三碼數字班級代碼"; return;
+  }
+  if (oldCode === newCode) { errEl.textContent = "新舊代碼相同"; return; }
+  if (!confirm(`確定將 ${oldCode} 班所有學生改為 ${newCode} 班？此操作無法復原。`)) return;
+
+  const btn = $("btn-promote-class");
+  const prog = $("promote-progress");
+  btn.disabled = true;
+  try {
+    let count = 0;
+    const total = await RecordStore.renameClass(oldCode, newCode, (done, n) => {
+      count = done;
+      prog.textContent = `正在遷移 ${done} / ${n} 位學生...`;
+    });
+    prog.textContent = "";
+    showToast(total > 0 ? `${oldCode} 班 ${total} 位學生已更新為 ${newCode} 班` : "找不到該班學生");
+    $("promote-old-code").value = "";
+    $("promote-new-code").value = "";
+  } catch (e) {
+    errEl.textContent = "遷移失敗：" + e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── UTILS ──────────────────────────────────────────────────
