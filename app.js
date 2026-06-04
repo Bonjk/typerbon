@@ -31,6 +31,7 @@ const state = {
   historyChart:  null,      // Chart.js history instance
   studentProfile: null,     // cached Firestore student profile
   noBackspace:   true,      // tracks whether Backspace was pressed this session
+  isComposing:   false,     // true during IME composition; prevents off-by-one rendering
 };
 
 const $ = id => document.getElementById(id);
@@ -61,7 +62,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("theme-select").addEventListener("change", e => applyTheme(e.target.value));
   initTheme();
 
-  $("typing-input").addEventListener("paste",   e => e.preventDefault());
+  $("typing-input").addEventListener("paste",            e => e.preventDefault());
+  $("typing-input").addEventListener("compositionstart", () => { state.isComposing = true; });
+  $("typing-input").addEventListener("compositionend",   () => { state.isComposing = false; handleTypingInput(); });
   $("typing-input").addEventListener("input", handleTypingInput);
   $("typing-input").addEventListener("keydown", e => {
     if (state.isFinished || !state.currentArticle) return;
@@ -290,6 +293,7 @@ function renderReference(text, cursorPos) {
 
 function handleTypingInput() {
   if (state.isFinished) return;
+  if (state.isComposing)  return;   // wait for IME composition to commit
   const typed  = $("typing-input").value;
   const target = state.currentArticle.content;
 
@@ -623,7 +627,28 @@ function showExamArticleModal(articles) {
   );
 }
 
+const EXAM_COLORS = [
+  { cls: "btn-confirm-red",    name: "紅色" },
+  { cls: "btn-confirm-orange", name: "橘色" },
+  { cls: "btn-confirm-purple", name: "紫色" },
+  { cls: "btn-confirm-green",  name: "綠色" },
+  { cls: "btn-confirm-blue",   name: "藍色" },
+];
+
 function showExamConfirmModal(article) {
+  // Pick a random colour as the correct one this round
+  const correct = EXAM_COLORS[Math.floor(Math.random() * EXAM_COLORS.length)];
+  $("exam-rule-color").textContent = correct.name;
+
+  // Shuffle button order so position also varies
+  const container = document.querySelector(".exam-confirm-btns");
+  const btns = [...container.children];
+  for (let i = btns.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    container.insertBefore(btns[j], btns[i]);
+    [btns[i], btns[j]] = [btns[j], btns[i]];
+  }
+
   $("exam-confirm-overlay").style.display = "flex";
   $("exam-rule-student-id").textContent = state.studentId || "—";
   const checkbox = $("exam-rules-check");
@@ -631,10 +656,13 @@ function showExamConfirmModal(article) {
   document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = true; });
   checkbox.onchange = () =>
     document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = !checkbox.checked; });
-  $("btn-confirm-purple").onclick = () => {
-    $("exam-confirm-overlay").style.display = "none";
-    startActualExam(article);
-  };
+
+  // Assign handlers based on which colour is correct this round
+  document.querySelectorAll(".btn-exam-confirm").forEach(btn => {
+    btn.onclick = btn.classList.contains(correct.cls)
+      ? () => { $("exam-confirm-overlay").style.display = "none"; startActualExam(article); }
+      : () => { $("exam-confirm-overlay").style.display = "none"; alert("請確實閱讀考試規則"); };
+  });
 }
 
 function startActualExam(article) {
