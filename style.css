@@ -1001,6 +1001,62 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .lb-score { font-family: var(--font-mono); font-weight: 700; color: var(--accent); text-align: right; }
 .lb-wpm   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
 .lb-acc   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
+.lb-ach   { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); text-align: right; }
+
+/* lb-header / lb-row grid: add 50px column for achievements */
+.leaderboard-list .lb-header,
+.leaderboard-list .lb-row {
+  grid-template-columns: 52px 1fr 90px 70px 70px 50px;
+}
+
+/* Gold leaderboard row */
+.lb-row.lb-gold {
+  background: linear-gradient(90deg, rgba(255,215,0,.08), rgba(255,180,0,.04));
+  border: 1px solid rgba(255,215,0,.35);
+  position: relative;
+  overflow: hidden;
+}
+.lb-row.lb-gold::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,230,109,.18) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: gold-sheen 3s linear infinite;
+  pointer-events: none; border-radius: inherit;
+}
+@keyframes gold-sheen {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── ACHIEVEMENTS ────────────────────────────────── */
+.ach-header   { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.ach-count    { font-family:var(--font-mono); font-size:.85rem; color:var(--accent); }
+.ach-category-label {
+  font-size:.7rem; font-weight:700; font-family:var(--font-mono);
+  text-transform:uppercase; letter-spacing:.1em;
+  color:var(--text-muted); margin:14px 0 6px;
+}
+.ach-grid    { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
+.ach-card    { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; }
+.ach-earned  { border-color:var(--accent); background:rgba(245,200,66,.06); }
+.ach-locked  { opacity:.5; }
+.ach-name    { font-weight:700; font-size:.85rem; margin-bottom:4px; }
+.ach-earned .ach-name { color:var(--accent); }
+.ach-desc    { font-size:.75rem; color:var(--text-muted); }
+.ach-hint    { font-size:.72rem; color:var(--text-dim); text-align:center; margin-top:18px; }
+
+/* Achievement toast */
+#achievement-toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--bg3); border:1px solid var(--accent); border-radius:var(--radius);
+  padding:10px 20px; display:flex; flex-direction:column; align-items:center; gap:2px;
+  opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; z-index:9999;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+#achievement-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.ach-toast-label { font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
+.ach-toast-name  { font-size:.95rem; font-weight:700; color:var(--accent); font-family:var(--font-mono); }
 
 .lb-me {
   font-size: 0.75rem;

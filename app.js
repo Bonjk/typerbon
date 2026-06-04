@@ -419,6 +419,12 @@ async function finishSession(typed) {
       triggerConfetti();
     }
   } catch { /* 網路異常時略過慶祝動畫 */ }
+
+  // 成就檢查
+  try {
+    const allSessions = await RecordStore.getByStudent(state.studentId);
+    await checkAchievements(session, allSessions, false);
+  } catch { /* 離線時略過 */ }
 }
 
 function showResults(session) {
@@ -514,6 +520,7 @@ async function renderHistory() {
     </div>`).join("");
 
   renderHistoryChart(records);
+  renderAchievements();
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────
@@ -549,17 +556,21 @@ async function renderLeaderboard() {
       <span class="lb-score">最高分</span>
       <span class="lb-wpm">WPM</span>
       <span class="lb-acc">正確率</span>
+      <span class="lb-ach" title="成就數">★</span>
     </div>
     ${rows.map(r => {
-      const isSelf = r.studentId === state.studentId;
-      const medal  = medals[r.rank - 1] || r.rank;
+      const isSelf  = r.studentId === state.studentId;
+      const medal   = medals[r.rank - 1] || r.rank;
+      const achCnt  = r.achievementCount || 0;
+      const isGold  = achCnt >= 20;
       return `
-        <div class="lb-row ${isSelf ? "lb-self" : ""}">
+        <div class="lb-row ${isSelf ? "lb-self" : ""} ${isGold ? "lb-gold" : ""}">
           <span class="lb-rank">${medal}</span>
           <span class="lb-id">${escHtml(r.studentId)}${isSelf ? " <span class='lb-me'>（我）</span>" : ""}</span>
           <span class="lb-score">${r.bestScore}</span>
           <span class="lb-wpm">${r.bestWpm}</span>
           <span class="lb-acc">${r.bestAcc}%</span>
+          <span class="lb-ach">${achCnt > 0 ? "★ " + achCnt : "—"}</span>
         </div>`;
     }).join("")}`;
 }
@@ -762,6 +773,11 @@ async function submitExam(typed, isFinal = false) {
   } catch {
     showToast("成績儲存失敗，請檢查網路連線");
   }
+
+  // 成就檢查（考試模式）
+  try {
+    await checkAchievements(result, null, true);
+  } catch { /* 離線時略過 */ }
 }
 
 // ── CELEBRATIONS ──────────────────────────────────────────
@@ -988,6 +1004,161 @@ function renderHistoryChart(records) {
       plugins: { legend: { labels: { color: c.muted, font: { size: 11 } } } },
     },
   });
+}
+
+// ── ACHIEVEMENTS ──────────────────────────────────────────
+async function renderAchievements() {
+  const wrap = $("achievements-wrap");
+  if (!wrap || !state.studentId) return;
+  const profile = await StudentStore.get(state.studentId);
+  const earned  = new Set(profile.achievements || []);
+  const total   = ACHIEVEMENTS.length;
+  const count   = earned.size;
+  const catLabel = { speed:"速度", accuracy:"正確率", persist:"堅持", progress:"進步", exam:"考試", special:"特殊" };
+
+  let html = `<div class="ach-header"><h3 class="breakdown-title">成就</h3><span class="ach-count">${count} / ${total}</span></div>`;
+
+  const byCategory = {};
+  ACHIEVEMENTS.forEach(a => { (byCategory[a.category] ??= []).push(a); });
+
+  for (const [cat, list] of Object.entries(byCategory)) {
+    html += `<div class="ach-category-label">${catLabel[cat] || cat}</div><div class="ach-grid">`;
+    for (const a of list) {
+      const isEarned = earned.has(a.id);
+      const showDesc = isEarned || !a.hidden;
+      html += `<div class="ach-card ${isEarned ? "ach-earned" : "ach-locked"}">
+        <div class="ach-name">${a.hidden && !isEarned ? "???" : a.name}</div>
+        <div class="ach-desc">${showDesc ? a.desc : "???"}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<p class="ach-hint">據說拿到夠多成就，名條就會閃閃發光。</p>`;
+  wrap.innerHTML = html;
+  wrap.style.display = "";
+}
+
+async function checkAchievements(session, allSessions, isExam) {
+  if (!state.studentId) return;
+  const profile  = await StudentStore.get(state.studentId);
+  const earned   = new Set(profile.achievements || []);
+  const newOnes  = [];
+
+  const award = async id => {
+    if (earned.has(id)) return;
+    const ok = await StudentStore.awardAchievement(state.studentId, id);
+    if (ok) {
+      earned.add(id);
+      const ach = ACHIEVEMENTS.find(a => a.id === id);
+      if (ach) newOnes.push(ach);
+    }
+  };
+
+  const wpm   = session.wpm   || 0;
+  const acc   = session.accuracy || 0;
+  const score = session.score  || 0;
+
+  if (!isExam) {
+    // ── 速度
+    if (wpm >= 10) await award("speed_10");
+    if (wpm >= 15) await award("speed_15");
+    if (wpm >= 20) await award("speed_20");
+    if (wpm >= 25) await award("speed_25");
+
+    // ── 首次練習
+    await award("first_session");
+
+    // ── 正確率
+    if (session.accuracy === 100) await award("accuracy_100");
+    if (allSessions) {
+      const recent5 = allSessions.slice(0, 5);
+      if (recent5.length >= 5 && recent5.every(r => r.accuracy >= 95))
+        await award("accuracy_streak");
+    }
+
+    // ── 堅持
+    if (allSessions) {
+      const total = allSessions.length;
+      if (total >= 5)  await award("sessions_5");
+      if (total >= 20) await award("sessions_20");
+      if (total >= 50) await award("sessions_50");
+      // 不同日期
+      const days = new Set(allSessions.map(r => new Date(r.ts).toDateString()));
+      if (days.size >= 5) await award("days_5");
+      // WPM 最高紀錄（第二筆以上才能超越）
+      if (allSessions.length >= 2) {
+        const prevBest = Math.max(...allSessions.slice(1).map(r => r.wpm || 0));
+        if (wpm > prevBest) await award("wpm_record");
+      }
+    }
+
+    // ── 特殊
+    if (session.accuracy === 100 && state.noBackspace) await award("no_backspace");
+    if (score % 100 === 67)                             await award("sixseven");
+    const chars = (state.currentArticle?.content || "").length;
+    if (chars >= 120) await award("long_article");
+  } else {
+    // ── 考試
+    await award("exam_first");
+    if (score >= 85)  await award("exam_excellent");
+    if (score >= 100) await award("exam_perfect");
+    if (session.difficulty === "hard") await award("exam_hard");
+
+    // 不慌不忙：考試剩 30% 時間完成
+    const deadline  = state.examDeadline;
+    const totalTime = 15 * 60 * 1000;
+    if (deadline) {
+      const remaining = deadline - Date.now();
+      if (remaining >= totalTime * 0.30) await award("exam_early");
+    }
+
+    // 控分傳奇
+    const rg = Math.round(session.grossAccuracy ?? 0);
+    const rn = Math.round(session.accuracy ?? 0);
+    const rc = Math.round(session.completion ?? 0);
+    const rs = Math.round(score);
+    if (rg === rn && rn === rc && rc === rs) await award("perfect_match");
+
+    // sixseven 也在考試觸發
+    if (score % 100 === 67) await award("sixseven");
+
+    // no_backspace 在考試也觸發（完成度 100%）
+    if (session.completion === 100 && state.noBackspace) await award("no_backspace");
+  }
+
+  // 逐一顯示 toast
+  for (const ach of newOnes) {
+    showAchievementToast(ach);
+    await new Promise(r => setTimeout(r, 1800));
+  }
+}
+
+function checkThemeAllAchievement(currentTheme) {
+  // 主題探索家：把用過的主題記在 localStorage，切齊六種才解鎖
+  const ALL_THEMES = ["dark","light","twilight","jersey","light-purple","dark-purple"];
+  const key  = "typerbon_tried_themes";
+  const tried = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+  tried.add(currentTheme);
+  localStorage.setItem(key, JSON.stringify([...tried]));
+  if (tried.size >= ALL_THEMES.length && state.studentId) {
+    StudentStore.awardAchievement(state.studentId, "theme_all").then(ok => {
+      if (ok) showAchievementToast(ACHIEVEMENTS.find(a => a.id === "theme_all"));
+    });
+  }
+}
+
+function showAchievementToast(ach) {
+  if (!ach) return;
+  let el = document.getElementById("achievement-toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "achievement-toast";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span class="ach-toast-label">解鎖成就</span><span class="ach-toast-name">${ach.name}</span>`;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2800);
 }
 
 // ── THEME ─────────────────────────────────────────────────
