@@ -158,8 +158,9 @@ function switchTab(name) {
     t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tab-content").forEach(c =>
     c.classList.toggle("active", c.id === `tab-${name}`));
-  if (name === "history")     renderHistory();
-  if (name === "leaderboard") renderLeaderboard();
+  if (name === "history")      renderHistory();
+  if (name === "leaderboard")  renderLeaderboard();
+  if (name === "achievements") renderAchievements();
 }
 
 // ── ARTICLE LIST ──────────────────────────────────────────
@@ -520,7 +521,6 @@ async function renderHistory() {
     </div>`).join("");
 
   renderHistoryChart(records);
-  renderAchievements();
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────
@@ -556,13 +556,13 @@ async function renderLeaderboard() {
       <span class="lb-score">最高分</span>
       <span class="lb-wpm">WPM</span>
       <span class="lb-acc">正確率</span>
-      <span class="lb-ach" title="成就數">★</span>
+      <span class="lb-ach"></span>
     </div>
     ${rows.map(r => {
       const isSelf  = r.studentId === state.studentId;
       const medal   = medals[r.rank - 1] || r.rank;
       const achCnt  = r.achievementCount || 0;
-      const isGold  = achCnt >= 20;
+      const isGold  = achCnt >= 22;
       return `
         <div class="lb-row ${isSelf ? "lb-self" : ""} ${isGold ? "lb-gold" : ""}">
           <span class="lb-rank">${medal}</span>
@@ -570,7 +570,7 @@ async function renderLeaderboard() {
           <span class="lb-score">${r.bestScore}</span>
           <span class="lb-wpm">${r.bestWpm}</span>
           <span class="lb-acc">${r.bestAcc}%</span>
-          <span class="lb-ach">${achCnt > 0 ? "★ " + achCnt : "—"}</span>
+          <span class="lb-ach">${medalSvg(achCnt)}</span>
         </div>`;
     }).join("")}`;
 }
@@ -1006,9 +1006,22 @@ function renderHistoryChart(records) {
   });
 }
 
+// ── MEDAL SVG ─────────────────────────────────────────────
+function medalSvg(count) {
+  if (!count) return '<span style="color:var(--text-dim)">—</span>';
+  const [fill, stroke] = count >= 20
+    ? ['#FFD700', '#A08000']
+    : count >= 11
+    ? ['#BEC2CB', '#8E9199']
+    : ['#CD7F32', '#8B5A2B'];
+  const star = 'M 115.08 115.08 L 115.08 48 L 163 95.92 L 210.92 48 L 210.92 115.08 L 278 115.08 L 230.08 163 L 278 210.92 L 210.92 210.92 L 210.92 278 L 163 230.08 L 115.08 278 L 115.08 210.92 L 48 210.92 L 95.92 163 L 48 115.08 Z';
+  const oct  = 'M 129.75 96 L 197.25 96 L 231 129.75 L 231 197.25 L 197.25 231 L 129.75 231 L 96 197.25 L 96 129.75 Z';
+  return `<svg class="lb-medal" viewBox="0 0 327 327" xmlns="http://www.w3.org/2000/svg"><path d="${star}" fill="#DC2626" stroke="#991B1B" stroke-width="6" transform="rotate(45,163,163)"/><path d="${oct}" fill="${fill}" stroke="${stroke}" stroke-width="5" transform="rotate(45,163.5,163.5)"/></svg>`;
+}
+
 // ── ACHIEVEMENTS ──────────────────────────────────────────
 async function renderAchievements() {
-  const wrap = $("achievements-wrap");
+  const wrap = $("ach-page-content");
   if (!wrap || !state.studentId) return;
   const profile = await StudentStore.get(state.studentId);
   const earned  = new Set(profile.achievements || []);
@@ -1025,10 +1038,9 @@ async function renderAchievements() {
     html += `<div class="ach-category-label">${catLabel[cat] || cat}</div><div class="ach-grid">`;
     for (const a of list) {
       const isEarned = earned.has(a.id);
-      const showDesc = isEarned || !a.hidden;
       html += `<div class="ach-card ${isEarned ? "ach-earned" : "ach-locked"}">
-        <div class="ach-name">${a.hidden && !isEarned ? "???" : a.name}</div>
-        <div class="ach-desc">${showDesc ? a.desc : "???"}</div>
+        <div class="ach-name">${a.name}</div>
+        <div class="ach-desc">${isEarned || !a.hidden ? a.desc : "???"}</div>
       </div>`;
     }
     html += `</div>`;
@@ -1036,7 +1048,6 @@ async function renderAchievements() {
 
   html += `<p class="ach-hint">據說拿到夠多成就，名條就會閃閃發光。</p>`;
   wrap.innerHTML = html;
-  wrap.style.display = "";
 }
 
 async function checkAchievements(session, allSessions, isExam) {

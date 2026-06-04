@@ -1001,7 +1001,8 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .lb-score { font-family: var(--font-mono); font-weight: 700; color: var(--accent); text-align: right; }
 .lb-wpm   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
 .lb-acc   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
-.lb-ach   { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); text-align: right; }
+.lb-ach   { text-align: right; line-height: 0; display: flex; align-items: center; justify-content: flex-end; }
+.lb-medal { width: 24px; height: 24px; display: inline-block; flex-shrink: 0; }
 
 /* lb-header / lb-row grid: add 50px column for achievements */
 .leaderboard-list .lb-header,
