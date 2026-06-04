@@ -1002,7 +1002,7 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .lb-wpm   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
 .lb-acc   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
 .lb-ach   { text-align: right; line-height: 0; display: flex; align-items: center; justify-content: flex-end; }
-.lb-medal { width: 24px; height: 24px; display: inline-block; flex-shrink: 0; }
+.lb-medal { width: 30px; height: 30px; display: inline-block; flex-shrink: 0; }
 
 /* lb-header / lb-row grid: add 50px column for achievements */
 .leaderboard-list .lb-header,
@@ -1047,17 +1047,53 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .ach-desc    { font-size:.75rem; color:var(--text-muted); }
 .ach-hint    { font-size:.72rem; color:var(--text-dim); text-align:center; margin-top:18px; }
 
-/* Achievement toast */
+/* Achievement toast — futuristic style */
 #achievement-toast {
-  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
-  background:var(--bg3); border:1px solid var(--accent); border-radius:var(--radius);
-  padding:10px 20px; display:flex; flex-direction:column; align-items:center; gap:2px;
-  opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; z-index:9999;
-  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(40px);
+  min-width: 260px;
+  background: rgba(5,8,15,.97);
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  padding: 18px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .4s cubic-bezier(.23,1,.32,1), transform .4s cubic-bezier(.23,1,.32,1);
+  z-index: 9999; overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(245,200,66,.12),
+    0 0 30px rgba(245,200,66,.22),
+    0 0 80px rgba(245,200,66,.07),
+    inset 0 0 40px rgba(245,200,66,.04);
 }
 #achievement-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-.ach-toast-label { font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
-.ach-toast-name  { font-size:.95rem; font-weight:700; color:var(--accent); font-family:var(--font-mono); }
+/* Horizontal sweep scan */
+#achievement-toast::before {
+  content:''; position:absolute; top:0; left:-100%; width:45%; height:100%;
+  background: linear-gradient(90deg, transparent, rgba(245,200,66,.13), transparent);
+  pointer-events: none;
+}
+#achievement-toast.show::before { animation: ach-sweep 1.6s ease-out .1s forwards; }
+@keyframes ach-sweep { 0%{left:-100%} 100%{left:150%} }
+/* Top accent line */
+#achievement-toast::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+/* Corner brackets */
+.ach-tc { position:absolute; width:9px; height:9px; }
+.ach-tc-tl { top:5px;    left:5px;   border-top:2px solid var(--accent); border-left:2px solid var(--accent); }
+.ach-tc-tr { top:5px;    right:5px;  border-top:2px solid var(--accent); border-right:2px solid var(--accent); }
+.ach-tc-bl { bottom:5px; left:5px;   border-bottom:2px solid var(--accent); border-left:2px solid var(--accent); }
+.ach-tc-br { bottom:5px; right:5px;  border-bottom:2px solid var(--accent); border-right:2px solid var(--accent); }
+.ach-toast-label {
+  font-size:.62rem; color:var(--accent); text-transform:uppercase;
+  letter-spacing:.2em; font-family:var(--font-mono); opacity:.75;
+}
+.ach-toast-name {
+  font-size:1rem; font-weight:700; color:#fff; font-family:var(--font-mono);
+  letter-spacing:.05em; text-shadow:0 0 14px var(--accent);
+}
 
 .lb-me {
   font-size: 0.75rem;

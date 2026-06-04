@@ -1008,7 +1008,7 @@ function renderHistoryChart(records) {
 
 // ── MEDAL SVG ─────────────────────────────────────────────
 function medalSvg(count) {
-  if (!count) return '<span style="color:var(--text-dim)">—</span>';
+  if (!count) return '';
   const [fill, stroke] = count >= 20
     ? ['#FFD700', '#A08000']
     : count >= 11
@@ -1107,8 +1107,8 @@ async function checkAchievements(session, allSessions, isExam) {
     // ── 特殊
     if (session.accuracy === 100 && state.noBackspace) await award("no_backspace");
     if (score % 100 === 67)                             await award("sixseven");
-    const chars = (state.currentArticle?.content || "").length;
-    if (chars >= 120) await award("long_article");
+    const wc = countWords(state.currentArticle?.content || "");
+    if (wc >= 120) await award("long_article");
   } else {
     // ── 考試
     await award("exam_first");
@@ -1167,7 +1167,11 @@ function showAchievementToast(ach) {
     el.id = "achievement-toast";
     document.body.appendChild(el);
   }
-  el.innerHTML = `<span class="ach-toast-label">解鎖成就</span><span class="ach-toast-name">${ach.name}</span>`;
+  el.innerHTML = `
+    <div class="ach-tc ach-tc-tl"></div><div class="ach-tc ach-tc-tr"></div>
+    <div class="ach-tc ach-tc-bl"></div><div class="ach-tc ach-tc-br"></div>
+    <span class="ach-toast-label">// ACHIEVEMENT UNLOCKED</span>
+    <span class="ach-toast-name">${ach.name}</span>`;
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 2800);
 }
