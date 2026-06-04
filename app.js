@@ -1196,11 +1196,13 @@ function showAchievementToast(ach) {
     el.id = "achievement-toast";
     document.body.appendChild(el);
   }
+  // Build with textContent to prevent XSS if achievement name is ever compromised
   el.innerHTML = `
     <div class="ach-tc ach-tc-tl"></div><div class="ach-tc ach-tc-tr"></div>
     <div class="ach-tc ach-tc-bl"></div><div class="ach-tc ach-tc-br"></div>
-    <span class="ach-toast-label">// ACHIEVEMENT UNLOCKED</span>
-    <span class="ach-toast-name">${ach.name}</span>`;
+    <span class="ach-toast-label">// 成就解鎖</span>
+    <span class="ach-toast-name"></span>`;
+  el.querySelector(".ach-toast-name").textContent = ach.name;
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 2800);
 }
