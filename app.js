@@ -628,6 +628,15 @@ function showExamArticleModal(articles) {
 }
 
 function showExamConfirmModal(article) {
+  // Shuffle button order so purple is in a random position each time
+  const container = document.querySelector(".exam-confirm-btns");
+  const btns = [...container.children];
+  for (let i = btns.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    container.insertBefore(btns[j], btns[i]);
+    [btns[i], btns[j]] = [btns[j], btns[i]];
+  }
+
   $("exam-confirm-overlay").style.display = "flex";
   $("exam-rule-student-id").textContent = state.studentId || "—";
   const checkbox = $("exam-rules-check");
@@ -635,10 +644,19 @@ function showExamConfirmModal(article) {
   document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = true; });
   checkbox.onchange = () =>
     document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = !checkbox.checked; });
+
+  // Correct button: purple starts the exam
   $("btn-confirm-purple").onclick = () => {
     $("exam-confirm-overlay").style.display = "none";
     startActualExam(article);
   };
+  // Wrong buttons: alert and return without starting
+  document.querySelectorAll(".btn-exam-confirm:not(#btn-confirm-purple)").forEach(btn => {
+    btn.onclick = () => {
+      $("exam-confirm-overlay").style.display = "none";
+      alert("請確實閱讀考試規則");
+    };
+  });
 }
 
 function startActualExam(article) {
