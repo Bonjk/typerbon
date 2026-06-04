@@ -530,7 +530,7 @@ const ACHIEVEMENTS = [
   { id: "exam_perfect",   category: "exam",     name: "100是考試的極限，不是我的", desc: "考試得到 100 分",           hidden: false },
   // 特殊（隱藏）
   { id: "theme_all",      category: "special",  name: "主題探索家",          desc: "試用過所有 6 種主題",           hidden: true },
-  { id: "long_article",   category: "special",  name: "長文挑戰者",          desc: "完成一篇 ≥ 120 字的文章",       hidden: true },
+  { id: "long_article",   category: "special",  name: "長文挑戰者",          desc: "完成一篇 ≥ 120 個單字的文章",   hidden: true },
   { id: "exam_early",     category: "special",  name: "不慌不忙",            desc: "考試剩 30% 時間時已完成",       hidden: true },
   { id: "sixseven",       category: "special",  name: "sixseven!",           desc: "分數尾數為 67",                 hidden: true },
   { id: "perfect_match",  category: "special",  name: "控分傳奇",            desc: "考試中毛確率 / 淨確率 / 完成度 / 分數四值四捨五入後相同", hidden: true },
