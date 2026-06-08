@@ -400,7 +400,7 @@ async function finishSession(typed) {
     : 100;
   const refTime          = wordCount / 15 * 60;
   const completionFactor = Math.max(1, Math.min(200, Math.round(refTime / elapsed * 100)));
-  const score = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || 'medium', completionFactor);
+  const score = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || 'medium', completionFactor, wordCount);
 
   const session = {
     ts: Date.now(),
@@ -408,7 +408,7 @@ async function finishSession(typed) {
     articleTitle: state.currentArticle.title,
     difficulty:   state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc, score,
-    completionFactor,
+    completionFactor, wordCount,
     elapsed: Math.round(elapsed),
     letterStats: { ...state.letterStats },
   };
@@ -475,6 +475,14 @@ function showResults(session) {
   $("res-gross-acc").textContent         = (session.grossAccuracy ?? session.accuracy) + "%";
   const dMap = { easy: "×0.90（初級）", medium: "×0.95（中級）", hard: "×1.00（高級）" };
   $("res-difficulty").textContent = dMap[session.difficulty] ?? "×1.00";
+
+  if (session.wordCount != null) {
+    const L = 0.9 + (session.wordCount / 80) * 0.1;
+    $("res-wordcount-row").style.display = "";
+    $("res-wordcount-coeff").textContent = "×" + L.toFixed(2) + "（" + session.wordCount + " 字）";
+  } else {
+    $("res-wordcount-row").style.display = "none";
+  }
 
   renderSessionChart();
   renderLetterBreakdown(session.letterStats);
@@ -790,6 +798,7 @@ async function submitExam(typed, isFinal = false) {
   $("res-completion-row").style.display         = "";
   $("res-completion").textContent               = completion + "%";
   $("res-completion-factor-row").style.display  = "none";
+  $("res-wordcount-row").style.display          = "none";
   $("res-gross-acc").textContent  = grossAcc + "%";
   const dMap2 = { easy: "×0.90（初級）", medium: "×0.95（中級）", hard: "×1.00（高級）" };
   $("res-difficulty").textContent = dMap2[result.difficulty] ?? "×1.00";
