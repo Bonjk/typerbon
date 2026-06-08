@@ -513,10 +513,11 @@ body {
   font-family: var(--font-mono);
   text-transform: uppercase;
 }
-.badge-easy   { background: rgba(62,207,142,.15); color: var(--accent2); border: 1px solid rgba(62,207,142,.3); }
-.badge-medium { background: rgba(245,200,66,.12); color: var(--accent);  border: 1px solid rgba(245,200,66,.25); }
-.badge-hard   { background: rgba(242,95,92,.12);  color: var(--danger);  border: 1px solid rgba(242,95,92,.25); }
-.badge-exam   { background: rgba(139,92,246,.12); color: #a78bfa;        border: 1px solid rgba(139,92,246,.3); }
+.badge-easy    { background: rgba(62,207,142,.15);  color: var(--accent2); border: 1px solid rgba(62,207,142,.3); }
+.badge-medium  { background: rgba(245,200,66,.12);  color: var(--accent);  border: 1px solid rgba(245,200,66,.25); }
+.badge-hard    { background: rgba(242,95,92,.12);   color: var(--danger);  border: 1px solid rgba(242,95,92,.25); }
+.badge-exam    { background: rgba(139,92,246,.12);  color: #a78bfa;        border: 1px solid rgba(139,92,246,.3); }
+.badge-classic { background: rgba(251,191,36,.12);  color: #fbbf24;        border: 1px solid rgba(251,191,36,.3); }
 
 /* ── TYPING PROGRESS BAR ────────────────────────── */
 .typing-progress-wrap  { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
@@ -870,6 +871,8 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
   line-height: 1.6;
   resize: vertical;
 }
+.tag-check-group { display: flex; gap: 16px; flex-wrap: wrap; padding: 4px 0; }
+.tag-check-label { display: flex; gap: 6px; align-items: center; cursor: pointer; font-size: .875rem; color: var(--text-muted); }
 
 .editor-actions { display: flex; gap: 10px; margin-top: 12px; }
 .editor-actions .btn-primary { max-width: 120px; }
