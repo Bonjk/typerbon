@@ -412,6 +412,11 @@ async function finishSession(typed) {
     letterStats: { ...state.letterStats },
   };
 
+  if (!validateLetterStats(typed, target)) {
+    showInvalidStatsWarning();
+    return;
+  }
+
   showResults(session);
 
   // Get old best before saving (for personal-best check)
@@ -766,6 +771,11 @@ async function submitExam(typed, isFinal = false) {
     letterStats: { ...state.letterStats },
   };
 
+  if (!validateLetterStats(typed, target)) {
+    showInvalidStatsWarning();
+    return;
+  }
+
   // Show results
   $("typing-area").style.display = "none";
   $("result-card").style.display = "block";
@@ -974,6 +984,30 @@ function pushWpmPoint(sec, wpm) {
   state.wpmChart.data.datasets[0].data.push(wpm);
   state.wpmChart.update("none");
   if (state.wpmHistory.length === 1) $("wpm-chart-wrap").style.display = "";
+}
+
+function validateLetterStats(typed, target) {
+  const portion = target.slice(0, typed.length);
+  const expected = [...portion].filter(c => /[a-z]/i.test(c)).length;
+  const actual   = Object.values(state.letterStats).reduce((s, v) => s + v.total, 0);
+  return actual === expected;
+}
+
+function showInvalidStatsWarning() {
+  $("typing-area").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "none";
+  $("btn-submit-practice").style.display  = "none";
+  $("result-card").style.display = "block";
+  $("result-title").textContent  = "成績無效";
+  $("result-emoji").textContent  = "按鍵統計異常，本次成績不予計算，請重新練習";
+  $("res-score").textContent     = "—";
+  $("btn-retry").style.display        = "";
+  $("btn-choose-another").style.display = "";
+  $("btn-choose-another").textContent = "選其他文章";
+  $("btn-submit-exam").style.display  = "none";
+  $("btn-cancel").style.display       = "none";
+  $("res-completion-row").style.display        = "none";
+  $("res-completion-factor-row").style.display = "none";
 }
 
 function renderSessionChart() {
