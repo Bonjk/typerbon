@@ -477,7 +477,7 @@ function showResults(session) {
   $("res-difficulty").textContent = dMap[session.difficulty] ?? "×1.00";
 
   if (session.wordCount != null) {
-    const L = 0.9 + (session.wordCount / 80) * 0.1;
+    const L = (session.wordCount + 20) / 100;
     $("res-wordcount-row").style.display = "";
     $("res-wordcount-coeff").textContent = "×" + L.toFixed(2) + "（" + session.wordCount + " 字）";
   } else {
