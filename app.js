@@ -78,6 +78,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.repeat || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
     state.grossKeystrokes++;
   });
+  $("btn-refresh-ref").addEventListener("click", () => {
+    if (state.currentArticle) renderReference(state.currentArticle.content, $("typing-input").value.length);
+  });
+  $("btn-submit-practice").addEventListener("click", () => {
+    if (!state.isRunning || state.isFinished) return;
+    finishSession($("typing-input").value);
+  });
   $("btn-restart").addEventListener("click", restartSession);
   $("btn-cancel").addEventListener("click", cancelSession);
   $("btn-join-exam").addEventListener("click", joinExam);
@@ -232,8 +239,10 @@ function showTypingArea(article) {
   state.currentArticle = { ...article, content: normalizeContent(article.content) };
   resetSessionState();
   $("article-title-display").textContent = article.title;
-  $("typing-area").style.display = "block";
-  $("result-card").style.display = "none";
+  $("typing-area").style.display          = "block";
+  $("result-card").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "";
+  $("btn-submit-practice").style.display  = state.examMode ? "none" : "";
   renderReference(article.content, 0);
   $("typing-input").value = "";
   $("typing-input").focus();
@@ -439,7 +448,9 @@ async function finishSession(typed) {
 }
 
 function showResults(session) {
-  $("typing-area").style.display = "none";
+  $("typing-area").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "none";
+  $("btn-submit-practice").style.display  = "none";
   $("result-card").style.display = "block";
   $("result-title").textContent  = "練習完成！";
 
@@ -488,8 +499,10 @@ function restartSession() { showTypingArea(state.currentArticle); }
 function cancelSession() {
   clearInterval(state.timerInterval);
   resetSessionState();
-  $("typing-area").style.display = "none";
-  $("result-card").style.display = "none";
+  $("typing-area").style.display          = "none";
+  $("result-card").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "none";
+  $("btn-submit-practice").style.display  = "none";
   $("article-selector").style.display = "block";
   renderArticleList();
 }
