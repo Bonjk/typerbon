@@ -63,6 +63,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
 
   $("typing-input").addEventListener("paste",            e => e.preventDefault());
+  ["dragover", "drop"].forEach(ev =>
+    $("typing-input").addEventListener(ev, e => e.preventDefault())
+  );
+  ["dragstart", "dragover", "drop", "contextmenu"].forEach(ev =>
+    $("reference-box").addEventListener(ev, e => e.preventDefault())
+  );
   $("typing-input").addEventListener("compositionstart", () => { state.isComposing = true; });
   $("typing-input").addEventListener("compositionend",   () => { state.isComposing = false; handleTypingInput(); });
   $("typing-input").addEventListener("input", handleTypingInput);
