@@ -560,7 +560,8 @@ function renderExamResultsTable(examId, allResults, classFilter) {
              style="width:130px;padding:5px 10px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono)" />
       <button class="btn-secondary btn-sm" id="btn-exam-filter-apply">篩選</button>
       ${classFilter ? `<button class="btn-secondary btn-sm" id="btn-exam-filter-clear">清除</button>` : ""}
-      <button class="btn-secondary btn-sm" id="btn-exam-export-excel" style="margin-left:auto">匯出 Excel</button>
+      <button class="btn-secondary btn-sm" id="btn-exam-refresh" style="margin-left:auto">重新整理</button>
+      <button class="btn-secondary btn-sm" id="btn-exam-export-excel">匯出 Excel</button>
     </div>
     ${classFilter ? `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">顯示 ${filtered.length} / ${allResults.length} 筆</div>` : ""}
     <div class="exam-grid lb-header">
@@ -591,6 +592,7 @@ function renderExamResultsTable(examId, allResults, classFilter) {
   });
   const clearBtn = $("btn-exam-filter-clear");
   if (clearBtn) clearBtn.addEventListener("click", () => renderExamResultsTable(examId, allResults, ""));
+  $("btn-exam-refresh").addEventListener("click", () => loadExamResults(examId));
   $("btn-exam-export-excel").addEventListener("click", () =>
     exportExamExcel(examId, filtered, classFilter));
 }
