@@ -7,10 +7,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // 學生練習紀錄（只允許新增，不允許修改或刪除）
+    // 學生練習紀錄（允許新增與刪除，刪除由教師後台執行）
     match /records/{studentId}/sessions/{sessionId} {
       allow read: if true;
       allow create: if true;
+      allow delete: if true;
     }
 
     // 排行榜（含考試成績，以 exam_ 前綴區分）
