@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#1a1a2e"/>
+  <text x="16" y="24" font-family="monospace,sans-serif" font-size="26"
+        font-weight="700" fill="#7c6af7" text-anchor="middle">T</text>
+  <text x="30" y="31" font-family="monospace,sans-serif" font-size="7"
+        font-weight="600" fill="#a0a0c0" text-anchor="end">ybon</text>
+</svg>
