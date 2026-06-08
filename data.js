@@ -402,13 +402,14 @@ const TeacherAuth = {
 };
 
 // ── 工具函式 ───────────────────────────────────────────────
-function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium', completion = 100) {
+function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium', completion = 100, wordCount = 80) {
   const D = ({ easy: 0.90, medium: 0.95, hard: 1.00 })[difficulty] ?? 1.00;
   const aScore = Math.pow(netAcc / 100, 2) * 100;
   const w = wpm >= 20 ? 100
     : 100 * Math.sin(Math.PI / 2 * Math.pow(wpm / 20, 0.72));
   const g = Math.pow(Math.min(grossAcc, 100) / 100, 0.3);
-  return Math.round((aScore * 0.649 + w * 0.351) * g * D * completion);
+  const L = 0.9 + (wordCount / 80) * 0.1;
+  return Math.round((aScore * 0.649 + w * 0.351) * g * D * completion * L);
 }
 
 function countWords(text) {
