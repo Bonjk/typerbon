@@ -213,12 +213,13 @@ async function renderArticleList() {
       const card = document.createElement("div");
       card.className = "article-card";
       const wc = countWords(article.content);
-      const examTag = article.isExam
-        ? `<span class="badge badge-exam">考試</span>` : "";
+      const tags = article.tags || (article.isExam ? ["exam"] : []);
+      const examTag    = tags.includes("exam")  ? `<span class="badge badge-exam">考試</span>` : "";
+      const classicTag = tags.includes("名著") ? `<span class="badge badge-classic">名著</span>` : "";
       card.innerHTML = `
         <div class="article-card-title">${escHtml(article.title)}</div>
         <div class="article-card-meta">
-          ${examTag}
+          ${examTag}${classicTag}
           <span>${wc} 個字</span>
         </div>`;
       card.addEventListener("click", () => {

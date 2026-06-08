@@ -115,12 +115,19 @@ async function renderTeacherArticleList() {
   list.innerHTML = articles.map(a => {
     const diffLabel = { easy: "初級", medium: "中級", hard: "高級" }[a.difficulty] || a.difficulty;
     const isDef = ArticleStore.isDefault(a);
+    const tags = a.tags || (a.isExam ? ["exam"] : ["practice"]);
+    const tagBadges = tags.map(t => {
+      const label = { exam: "考試", practice: "練習", "名著": "名著" }[t] || t;
+      const cls   = { exam: "badge-hard", practice: "badge-easy", "名著": "badge-classic" }[t] || "badge-easy";
+      return `<span class="badge ${cls}">${label}</span>`;
+    }).join(" ");
     return `
       <div class="ta-row">
         <div style="flex:1;min-width:0">
           <div class="ta-row-title">${escHtml(a.title)}</div>
           <div class="ta-row-meta">
             <span class="badge badge-${a.difficulty}">${diffLabel}</span>
+            ${tagBadges}
             &nbsp;${countWords(a.content)} 字
             ${isDef ? '<span style="color:var(--text-dim);font-size:.72rem"> · 預設</span>' : ''}
           </div>
@@ -146,6 +153,10 @@ function openEditor(articleId) {
       $("ed-title").value = a.title;
       $("ed-difficulty").value = a.difficulty;
       $("ed-content").value = a.content;
+      const tags = a.tags || (a.isExam ? ["exam"] : ["practice"]);
+      $("ed-tag-practice").checked = tags.includes("practice");
+      $("ed-tag-exam").checked     = tags.includes("exam");
+      $("ed-tag-classic").checked  = tags.includes("名著");
       updateWordCount();
     });
   } else {
@@ -153,6 +164,9 @@ function openEditor(articleId) {
     $("ed-title").value = "";
     $("ed-difficulty").value = "medium";
     $("ed-content").value = "";
+    $("ed-tag-practice").checked = true;
+    $("ed-tag-exam").checked     = false;
+    $("ed-tag-classic").checked  = false;
     updateWordCount();
   }
   $("editor-error").textContent = "";
@@ -181,6 +195,12 @@ async function saveArticle() {
   if (!content) { errEl.textContent = "請輸入文章內容"; return; }
   if (countWords(content) < 10) { errEl.textContent = "文章至少需要 10 個單字"; return; }
 
+  const tags = [];
+  if ($("ed-tag-practice").checked) tags.push("practice");
+  if ($("ed-tag-exam").checked)     tags.push("exam");
+  if ($("ed-tag-classic").checked)  tags.push("名著");
+  if (!tags.length) tags.push("practice");
+
   errEl.textContent = "";
   $("btn-save-article").textContent = "儲存中...";
   $("btn-save-article").disabled = true;
@@ -190,14 +210,14 @@ async function saveArticle() {
       const articles = await ArticleStore.getAll();
       const a = articles.find(x => x.id === teacherState.editingId);
       if (a && ArticleStore.isDefault(a)) {
-        await ArticleStore.add({ title, difficulty: diff, content });
+        await ArticleStore.add({ title, difficulty: diff, content, tags });
         showToast("已另存為新文章（預設文章不修改）");
       } else {
-        await ArticleStore.update({ id: teacherState.editingId, title, difficulty: diff, content });
+        await ArticleStore.update({ id: teacherState.editingId, title, difficulty: diff, content, tags });
         showToast("文章已更新");
       }
     } else {
-      await ArticleStore.add({ title, difficulty: diff, content });
+      await ArticleStore.add({ title, difficulty: diff, content, tags });
       showToast("文章已新增");
     }
     closeEditor();
@@ -463,7 +483,9 @@ async function loadExamTab() {
   const articles = await ArticleStore.getAll();
   teacherState.examArticles = articles;
 
-  const byDiff = d => articles.filter(a => a.difficulty === d);
+  const byDiff = d => articles.filter(a =>
+    a.difficulty === d && (a.tags || []).includes("exam")
+  );
   const fillSelect = (id, list) => {
     $(id).innerHTML = `<option value="">請選擇...</option>` +
       list.map(a => `<option value="${escHtml(a.id)}">${escHtml(a.title)}（${countWords(a.content)} 字）</option>`).join("");

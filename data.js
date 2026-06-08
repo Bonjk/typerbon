@@ -18,79 +18,91 @@ const _app = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(_app);
 
 // ── 預設文章 ───────────────────────────────────────────────
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 const DEFAULT_ARTICLES = [
   {
     id: "default-1",
     title: "The Internet",
     difficulty: "easy",
+    tags: ["practice"],
     content: "The Internet is a global network of computers that allows people to share information and communicate with each other. It was first developed in the 1960s as a way for scientists to share research. Today, billions of people use the Internet every day to send emails, watch videos, shop online, and connect with friends. The Internet has changed the way we live, work, and learn. It has made the world a smaller and more connected place for everyone."
   },
   {
     id: "default-2",
     title: "Healthy Habits",
     difficulty: "easy",
+    tags: ["practice"],
     content: "Living a healthy life means making good choices every day. Eating plenty of fruits and vegetables gives your body the vitamins it needs. Drinking enough water keeps you hydrated and helps your organs work properly. Exercise is also very important. Walking, running, or playing sports for at least thirty minutes a day can improve your heart health and boost your mood. Getting enough sleep each night helps your brain rest and recover. Small daily habits can lead to big changes over time."
   },
   {
     id: "default-3",
     title: "Climate Change",
     difficulty: "medium",
+    tags: ["practice"],
     content: "Climate change refers to long-term shifts in global temperatures and weather patterns. While some climate change occurs naturally, human activities have been the main driver since the industrial revolution. Burning fossil fuels such as coal, oil, and gas releases greenhouse gases into the atmosphere. These gases trap heat and cause the planet to warm. Rising temperatures lead to melting ice caps, higher sea levels, and more extreme weather events. Governments, businesses, and individuals must all work together to reduce emissions and protect our planet for future generations."
   },
   {
     id: "default-4",
     title: "Artificial Intelligence",
     difficulty: "hard",
+    tags: ["practice"],
     content: "Artificial intelligence, or AI, refers to computer systems designed to perform tasks that typically require human intelligence. These tasks include recognizing speech, translating languages, identifying images, and making complex decisions. Machine learning, a subset of AI, enables computers to learn from large amounts of data and improve their performance over time without being explicitly programmed. AI is already embedded in many aspects of daily life, from recommendation algorithms on streaming platforms to navigation systems in vehicles. As the technology continues to advance, questions about ethics, employment, and privacy become increasingly important for society to address."
   },
   {
     id: "default-5",
     title: "To Be or Not To Be — Hamlet",
     difficulty: "hard",
+    tags: ["practice", "名著"],
     content: "To be, or not to be, that is the question: Whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune, or to take arms against a sea of troubles and by opposing end them. To die, to sleep, no more; and by a sleep to say we end the heartache and the thousand natural shocks that flesh is heir to: it is a consummation devoutly to be wished. To die, to sleep; to sleep, perchance to dream. Ay, there is the rub; for in that sleep of death what dreams may come when we have shuffled off this mortal coil must give us pause."
   },
   {
     id: "default-6",
     title: "A Tale of Two Cities — Charles Dickens",
     difficulty: "medium",
+    tags: ["practice", "名著"],
     content: "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair, we had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way. In short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only."
   },
   {
     id: "default-7",
     title: "Pride and Prejudice — Jane Austen",
     difficulty: "medium",
+    tags: ["practice", "名著"],
     content: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered as the rightful property of some one or other of their daughters. My dear Mr. Bennet, said his lady to him one day, have you heard that Netherfield Park is let at last? Mr. Bennet replied that he had not. But it is, returned she; for Mrs. Long has just been here, and she told me all about it."
   },
   {
     id: "default-8",
     title: "The Great Gatsby — F. Scott Fitzgerald",
     difficulty: "easy",
+    tags: ["practice", "名著"],
     content: "In my younger and more vulnerable years my father gave me some advice that I have been turning over in my mind ever since. Whenever you feel like criticizing anyone, he told me, just remember that all the people in this world have not had the advantages that you have had. He did not say any more, but we have always been unusually communicative in a reserved way, and I understood that he meant a great deal more than that. In consequence I am inclined to reserve all judgments, a habit that has opened up many curious natures to me."
   },
   {
     id: "default-9",
     title: "The Tell-Tale Heart — Edgar Allan Poe",
     difficulty: "medium",
+    tags: ["practice", "名著"],
     content: "True, nervous, very dreadfully nervous I had been and am; but why will you say that I am mad? The disease had sharpened my senses, not destroyed, not dulled them. Above all was the sense of hearing acute. I heard all things in the heaven and in the earth. I heard many things in hell. How then am I mad? Hearken, and observe how healthily, how calmly I can tell you the whole story. It is impossible to say how first the idea entered my brain; but once conceived, it haunted me day and night. Object there was none. Passion there was none. I loved the old man."
   },
   {
     id: "default-10",
     title: "Moby Dick — Herman Melville",
     difficulty: "easy",
+    tags: ["practice", "名著"],
     content: "Call me Ishmael. Some years ago, never mind how long precisely, having little money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen, and regulating the circulation. Whenever I find myself growing grim about the mouth, whenever it is a damp, drizzly November in my soul, whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet, I account it high time to get to sea as soon as I can."
   },
   {
     id: "default-11",
     title: "Alice's Adventures in Wonderland — Lewis Carroll",
     difficulty: "easy",
+    tags: ["practice", "名著"],
     content: "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, and what is the use of a book, thought Alice, without pictures or conversations? So she was considering in her own mind, as well as she could, for the hot day made her feel very sleepy and stupid, whether the pleasure of making a daisy chain would be worth the trouble of getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her."
   },
   {
     id: "default-12",
     title: "Jane Eyre — Charlotte Bronte",
     difficulty: "hard",
+    tags: ["practice", "名著"],
     content: "There was no possibility of taking a walk that day. We had been wandering, indeed, in the leafless shrubbery an hour in the morning; but since dinner the cold winter wind had brought with it clouds so sombre, and a rain so penetrating, that further outdoor exercise was now out of the question. I was glad of it: I never liked long walks, especially on chilly afternoons. Dreadful to me was the coming home in the raw twilight, with nipped fingers and toes, and a heart saddened by the chidings of Bessie, the nurse, and humbled by the consciousness of my physical inferiority to Eliza, John, and Georgiana Reed."
   },
   {
@@ -98,6 +110,7 @@ const DEFAULT_ARTICLES = [
     title: "A Day at School",
     difficulty: "easy",
     isExam: true,
+    tags: ["exam"],
     content: "Every morning, I wake up early and get ready for school. I eat breakfast with my family before leaving home. At school, I study math, English, and science. During lunch, I chat with my friends and share food. In the afternoon, we have sports class and play games outside. After school, I do my homework and read books. I enjoy going to school because I learn something new every day. My teachers are kind and always help me when I need them."
   },
   {
@@ -105,6 +118,7 @@ const DEFAULT_ARTICLES = [
     title: "The Park",
     difficulty: "easy",
     isExam: true,
+    tags: ["exam"],
     content: "On weekends, my family often goes to the park near our home. We bring food and eat outside under the tall trees. My little brother likes to run and play on the grass. My parents sit on a bench and talk about their day. I like to ride my bike along the path by the lake. The park is a beautiful and peaceful place. There are many birds and flowers there. I always feel happy and relaxed after spending time at the park."
   },
   {
@@ -112,6 +126,7 @@ const DEFAULT_ARTICLES = [
     title: "Cooking with Mom",
     difficulty: "easy",
     isExam: true,
+    tags: ["exam"],
     content: "My mother loves to cook, and she often teaches me how to make simple dishes. On Saturday mornings, we go to the market to buy fresh vegetables, meat, and fruit. Back home, she shows me how to cut and wash the food. My favorite dish is egg soup with tomatoes. It is easy to make and very delicious. Cooking together is a great way to spend time with family. I hope to become a good cook when I grow up."
   },
   {
@@ -119,6 +134,7 @@ const DEFAULT_ARTICLES = [
     title: "Sports and Health",
     difficulty: "medium",
     isExam: true,
+    tags: ["exam"],
     content: "Playing sports is one of the best ways to stay healthy and active. When you exercise regularly, your body becomes stronger and your mind feels clearer. Many students enjoy playing basketball, volleyball, or soccer after school. These team sports also teach important skills like cooperation and communication. However, it is important to warm up before you start and cool down after you finish. Drinking enough water during exercise is also necessary. Some people prefer individual sports such as swimming or running. No matter what sport you choose, the most important thing is to enjoy yourself and keep moving. A short walk every day can make a big difference."
   },
   {
@@ -126,6 +142,7 @@ const DEFAULT_ARTICLES = [
     title: "Technology in Daily Life",
     difficulty: "medium",
     isExam: true,
+    tags: ["exam"],
     content: "Technology has changed our daily lives in ways that were hard to imagine just a few decades ago. Smartphones allow us to connect with people around the world, search for information, take photos, and even pay for goods and services. In the classroom, students use tablets and computers to study and develop new skills. However, spending too much time on screens can have negative effects on health and social relationships. It is important to balance the use of technology with outdoor activities and regular face-to-face communication. Technology is a powerful and useful tool, but only when it is used with care and self-control."
   },
   {
@@ -133,6 +150,7 @@ const DEFAULT_ARTICLES = [
     title: "Environmental Protection",
     difficulty: "medium",
     isExam: true,
+    tags: ["exam"],
     content: "Taking care of our environment is the responsibility of every person on Earth. Pollution from factories, vehicles, and plastic waste is causing serious harm to our planet. Rivers and oceans are filled with garbage, and the air in many cities is difficult to breathe. We can all make a difference by making small changes in our daily lives. Try to use less plastic, recycle your waste, and save electricity whenever possible. Walking or taking public transportation instead of driving also helps reduce pollution. If everyone works together and takes action, we can protect our beautiful planet and leave a better world for future generations."
   },
   {
@@ -140,6 +158,7 @@ const DEFAULT_ARTICLES = [
     title: "Decision Making and Cognitive Bias",
     difficulty: "hard",
     isExam: true,
+    tags: ["exam"],
     content: "Every day, humans make hundreds of decisions, from choosing what to eat for breakfast to determining major career choices. While some decisions feel automatic, others require deliberate thought and careful analysis. Psychologists have discovered that human judgment is frequently distorted by cognitive biases, unconscious mental shortcuts that evolved to help us process information quickly. For example, the confirmation bias leads people to seek information that supports their existing beliefs while ignoring contradictory evidence. Similarly, the availability heuristic causes us to overestimate the likelihood of events that come easily to mind. These biases can lead to systematic errors in judgment, affecting everything from personal relationships to financial decisions. Becoming aware of these mental patterns is the first step toward more rational thinking. By deliberately questioning our assumptions and seeking diverse perspectives, we can gradually overcome these inherent limitations and make more thoughtful, well-informed choices."
   },
   {
@@ -147,6 +166,7 @@ const DEFAULT_ARTICLES = [
     title: "Urban Development and Sustainability",
     difficulty: "hard",
     isExam: true,
+    tags: ["exam"],
     content: "Modern cities face enormous challenges as their populations continue to grow at unprecedented rates. The rapid expansion of urban areas places significant pressure on infrastructure, transportation systems, housing, and natural resources. City planners and architects are increasingly embracing sustainable design principles to address these concerns. Green buildings that incorporate solar panels, rainwater harvesting systems, and energy-efficient materials are becoming more prevalent in metropolitan areas worldwide. The concept of smart cities, where digital technology monitors and optimizes urban services in real time, is gaining considerable momentum. However, urban development rarely comes without social costs. Rising property values frequently displace lower-income communities, deepening economic inequality. Achieving a genuine balance between economic growth, environmental sustainability, and social equity demands comprehensive policy frameworks and authentic cooperation between governments, private enterprises, and citizens. The quality of urban life for future generations depends fundamentally on the choices we make today."
   },
   {
@@ -154,6 +174,7 @@ const DEFAULT_ARTICLES = [
     title: "Memory and the Brain",
     difficulty: "hard",
     isExam: true,
+    tags: ["exam"],
     content: "The human brain's capacity to store and retrieve information is among its most extraordinary attributes. Memory is not a single unified system but rather a sophisticated network of interconnected processes, encompassing encoding, storage, and retrieval. Neuroscientists have identified multiple distinct memory systems, including episodic memory, which records personal experiences, and semantic memory, which stores factual knowledge. The hippocampus, a structure embedded deep within the temporal lobe, plays an indispensable role in consolidating newly acquired information into long-term storage. Remarkably, sleep appears critical to this consolidation process: during deep sleep, the brain systematically replays and reinforces neural pathways formed during waking hours. Forgetting, though often perceived as failure, actually serves an adaptive function by eliminating irrelevant data and allowing the brain to allocate resources more effectively. Understanding memory formation carries profound implications for education, therapy, and the treatment of degenerative neurological conditions."
   }
 ];
@@ -168,6 +189,11 @@ const ArticleStore = {
       await setDoc(doc(db, "articles", a.id), { ...a, isDefault: true, createdAt: serverTimestamp() });
     }
     await setDoc(seededRef, { version: SEED_VERSION, seededAt: serverTimestamp() });
+    const allSnap = await getDocs(collection(db, "articles"));
+    await Promise.all(allSnap.docs
+      .filter(d => !d.data().tags)
+      .map(d => updateDoc(d.ref, { tags: d.data().isExam ? ["exam"] : ["practice"] }))
+    );
   },
 
   async getAll() {
@@ -178,6 +204,7 @@ const ArticleStore = {
   async add(article) {
     const ref = await addDoc(collection(db, "articles"), {
       ...article,
+      tags: article.tags?.length ? article.tags : ["practice"],
       isDefault: false,
       createdAt: serverTimestamp()
     });
