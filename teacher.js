@@ -2,7 +2,7 @@
  * teacher.js — 教師後台邏輯（Firebase 版）
  */
 import { ArticleStore, RecordStore, ExamStore, TeacherAuth,
-         countWords, formatDate, validateStudentId, showToast } from "./data.js";
+         countWords, formatDate, validateStudentId, showToast, escHtml } from "./data.js";
 
 const teacherState = { editingId: null, leaderboardCache: null, examArticles: null };
 const $ = id => document.getElementById(id);
@@ -837,9 +837,3 @@ async function promoteClass() {
   }
 }
 
-// ── UTILS ──────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}

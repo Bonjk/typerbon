@@ -3,7 +3,7 @@
  */
 import { ArticleStore, RecordStore, ExamStore, StudentStore,
          ACHIEVEMENTS, calcScore, countWords, formatDate,
-         validateStudentId, showToast } from "./data.js";
+         validateStudentId, showToast, escHtml } from "./data.js";
 
 // ── STATE ─────────────────────────────────────────────────
 const state = {
@@ -1235,9 +1235,3 @@ function normalizeContent(text) {
     .replace(/ /g,      ' ');   // non-breaking space → space
 }
 
-// ── UTILS ─────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}

@@ -414,6 +414,12 @@ function showToast(msg, duration = 2200) {
   setTimeout(() => el.classList.remove("show"), duration);
 }
 
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // ── ExamStore ──────────────────────────────────────────────
 const ExamStore = {
   /** 取得目前進行中的考試（若無則回傳 null） */
@@ -573,5 +579,6 @@ const StudentStore = {
 };
 
 export { db, ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore,
-         ACHIEVEMENTS, calcScore, countWords, formatDate, validateStudentId, showToast };
+         ACHIEVEMENTS, calcScore, countWords, formatDate, validateStudentId,
+         showToast, escHtml };
 
