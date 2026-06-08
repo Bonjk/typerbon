@@ -3,7 +3,7 @@
  */
 import { ArticleStore, RecordStore, ExamStore, StudentStore,
          ACHIEVEMENTS, calcScore, countWords, formatDate,
-         validateStudentId, showToast } from "./data.js";
+         validateStudentId, showToast, escHtml } from "./data.js";
 
 // ── STATE ─────────────────────────────────────────────────
 const state = {
@@ -63,6 +63,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
 
   $("typing-input").addEventListener("paste",            e => e.preventDefault());
+  ["dragover", "drop"].forEach(ev =>
+    $("typing-input").addEventListener(ev, e => e.preventDefault())
+  );
+  ["dragstart", "dragover", "drop", "contextmenu"].forEach(ev =>
+    $("reference-box").addEventListener(ev, e => e.preventDefault())
+  );
   $("typing-input").addEventListener("compositionstart", () => { state.isComposing = true; });
   $("typing-input").addEventListener("compositionend",   () => { state.isComposing = false; handleTypingInput(); });
   $("typing-input").addEventListener("input", handleTypingInput);
@@ -71,6 +77,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Backspace") { state.noBackspace = false; return; }
     if (e.repeat || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
     state.grossKeystrokes++;
+  });
+  $("btn-refresh-ref").addEventListener("click", () => {
+    if (state.currentArticle) renderReference(state.currentArticle.content, $("typing-input").value.length);
+  });
+  $("btn-submit-practice").addEventListener("click", () => {
+    if (!state.isRunning || state.isFinished) return;
+    finishSession($("typing-input").value);
   });
   $("btn-restart").addEventListener("click", restartSession);
   $("btn-cancel").addEventListener("click", cancelSession);
@@ -226,8 +239,10 @@ function showTypingArea(article) {
   state.currentArticle = { ...article, content: normalizeContent(article.content) };
   resetSessionState();
   $("article-title-display").textContent = article.title;
-  $("typing-area").style.display = "block";
-  $("result-card").style.display = "none";
+  $("typing-area").style.display          = "block";
+  $("result-card").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "";
+  $("btn-submit-practice").style.display  = state.examMode ? "none" : "";
   renderReference(article.content, 0);
   $("typing-input").value = "";
   $("typing-input").focus();
@@ -397,6 +412,11 @@ async function finishSession(typed) {
     letterStats: { ...state.letterStats },
   };
 
+  if (!validateLetterStats(typed, target)) {
+    showInvalidStatsWarning();
+    return;
+  }
+
   showResults(session);
 
   // Get old best before saving (for personal-best check)
@@ -433,7 +453,9 @@ async function finishSession(typed) {
 }
 
 function showResults(session) {
-  $("typing-area").style.display = "none";
+  $("typing-area").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "none";
+  $("btn-submit-practice").style.display  = "none";
   $("result-card").style.display = "block";
   $("result-title").textContent  = "練習完成！";
 
@@ -482,8 +504,10 @@ function restartSession() { showTypingArea(state.currentArticle); }
 function cancelSession() {
   clearInterval(state.timerInterval);
   resetSessionState();
-  $("typing-area").style.display = "none";
-  $("result-card").style.display = "none";
+  $("typing-area").style.display          = "none";
+  $("result-card").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "none";
+  $("btn-submit-practice").style.display  = "none";
   $("article-selector").style.display = "block";
   renderArticleList();
 }
@@ -627,18 +651,11 @@ function showExamArticleModal(articles) {
   );
 }
 
-const EXAM_COLORS = [
-  { cls: "btn-confirm-red",    name: "紅色" },
-  { cls: "btn-confirm-orange", name: "橘色" },
-  { cls: "btn-confirm-purple", name: "紫色" },
-  { cls: "btn-confirm-green",  name: "綠色" },
-  { cls: "btn-confirm-blue",   name: "藍色" },
-];
+const EXAM_WORDS = ["確認", "OK", "明白", "了解", "收到"];
 
 function showExamConfirmModal(article) {
-  // Pick a random colour as the correct one this round
-  const correct = EXAM_COLORS[Math.floor(Math.random() * EXAM_COLORS.length)];
-  $("exam-rule-color").textContent = correct.name;
+  const correct = EXAM_WORDS[Math.floor(Math.random() * EXAM_WORDS.length)];
+  $("exam-rule-color").textContent = `「${correct}」`;
 
   // Shuffle button order so position also varies
   const container = document.querySelector(".exam-confirm-btns");
@@ -657,9 +674,8 @@ function showExamConfirmModal(article) {
   checkbox.onchange = () =>
     document.querySelectorAll(".btn-exam-confirm").forEach(b => { b.disabled = !checkbox.checked; });
 
-  // Assign handlers based on which colour is correct this round
   document.querySelectorAll(".btn-exam-confirm").forEach(btn => {
-    btn.onclick = btn.classList.contains(correct.cls)
+    btn.onclick = btn.dataset.word === correct
       ? () => { $("exam-confirm-overlay").style.display = "none"; startActualExam(article); }
       : () => { $("exam-confirm-overlay").style.display = "none"; alert("請確實閱讀考試規則"); };
   });
@@ -754,6 +770,11 @@ async function submitExam(typed, isFinal = false) {
     articleTitle: state.currentArticle.title,
     letterStats: { ...state.letterStats },
   };
+
+  if (!validateLetterStats(typed, target)) {
+    showInvalidStatsWarning();
+    return;
+  }
 
   // Show results
   $("typing-area").style.display = "none";
@@ -963,6 +984,30 @@ function pushWpmPoint(sec, wpm) {
   state.wpmChart.data.datasets[0].data.push(wpm);
   state.wpmChart.update("none");
   if (state.wpmHistory.length === 1) $("wpm-chart-wrap").style.display = "";
+}
+
+function validateLetterStats(typed, target) {
+  const portion = target.slice(0, typed.length);
+  const expected = [...portion].filter(c => /[a-z]/i.test(c)).length;
+  const actual   = Object.values(state.letterStats).reduce((s, v) => s + v.total, 0);
+  return actual === expected;
+}
+
+function showInvalidStatsWarning() {
+  $("typing-area").style.display          = "none";
+  $("btn-refresh-ref").style.display      = "none";
+  $("btn-submit-practice").style.display  = "none";
+  $("result-card").style.display = "block";
+  $("result-title").textContent  = "成績無效";
+  $("result-emoji").textContent  = "按鍵統計異常，本次成績不予計算，請重新練習";
+  $("res-score").textContent     = "—";
+  $("btn-retry").style.display        = "";
+  $("btn-choose-another").style.display = "";
+  $("btn-choose-another").textContent = "選其他文章";
+  $("btn-submit-exam").style.display  = "none";
+  $("btn-cancel").style.display       = "none";
+  $("res-completion-row").style.display        = "none";
+  $("res-completion-factor-row").style.display = "none";
 }
 
 function renderSessionChart() {
@@ -1235,9 +1280,3 @@ function normalizeContent(text) {
     .replace(/ /g,      ' ');   // non-breaking space → space
 }
 
-// ── UTILS ─────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}

@@ -2,6 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TyperBon | 英文打字練習</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -73,18 +74,18 @@
         <li>系統會自行計算成績並登記，時限內可以多次嘗試，記錄最高分。</li>
         <li>正確率是最重要的、其次是速度，計算上大約是 65 : 35。</li>
         <li>有任何突發情況舉手反映。</li>
-        <li>為了確定你有看到這裡，請選擇<strong id="exam-rule-color">紫色</strong>的確定考試。</li>
+        <li>為了確定你有看到這裡，請點選<strong id="exam-rule-color">「確認」</strong>。</li>
       </ol>
       <label class="exam-rules-check-row">
         <input type="checkbox" id="exam-rules-check" />
         我已閱讀並了解以上規則
       </label>
       <div class="exam-confirm-btns">
-        <button class="btn-exam-confirm btn-confirm-red"    disabled>確定考試</button>
-        <button class="btn-exam-confirm btn-confirm-orange" disabled>確定考試</button>
-        <button class="btn-exam-confirm btn-confirm-purple" disabled>確定考試</button>
-        <button class="btn-exam-confirm btn-confirm-green"  disabled>確定考試</button>
-        <button class="btn-exam-confirm btn-confirm-blue"   disabled>確定考試</button>
+        <button class="btn-exam-confirm btn-confirm-red"    data-word="確認" disabled>確認</button>
+        <button class="btn-exam-confirm btn-confirm-orange" data-word="OK"   disabled>OK</button>
+        <button class="btn-exam-confirm btn-confirm-purple" data-word="明白" disabled>明白</button>
+        <button class="btn-exam-confirm btn-confirm-green"  data-word="了解" disabled>了解</button>
+        <button class="btn-exam-confirm btn-confirm-blue"   data-word="收到" disabled>收到</button>
       </div>
       <button class="exam-modal-cancel" id="btn-exam-confirm-cancel">取消</button>
     </div>
@@ -114,6 +115,7 @@
           <div class="stat-chip"><span class="stat-label">WPM</span><span id="live-wpm">0</span></div>
           <div class="stat-chip"><span class="stat-label">正確率</span><span id="live-acc">100%</span></div>
           <div class="stat-chip" id="exam-time-chip" style="display:none"><span class="stat-label">剩餘</span><span id="exam-countdown">15:00</span></div>
+          <button id="btn-refresh-ref" class="btn-icon" title="重新比對顯示" style="display:none">↺</button>
         </div>
       </div>
       <p class="stats-notice">各項數據以最終計算為主，即時顯示資訊僅為參考</p>
@@ -139,6 +141,7 @@
       </div>
       <div class="typing-actions">
         <button class="btn-primary" id="btn-submit-exam" style="display:none">交卷</button>
+        <button class="btn-secondary" id="btn-submit-practice" style="display:none">提前交卷</button>
         <button class="btn-secondary" id="btn-restart">重新開始</button>
         <button class="btn-danger" id="btn-cancel">取消</button>
       </div>
