@@ -552,7 +552,7 @@ async function renderHistory() {
     <div class="history-row">
       <span class="hr-date">${formatDate(r.ts)}</span>
       <span class="hr-title">${escHtml(r.articleTitle)}</span>
-      <span class="hr-score">分 ${r.score}</span>
+      <span class="hr-score">${r.score} 分</span>
       <span class="hr-wpm">${r.wpm} WPM</span>
       <span class="hr-acc">${r.accuracy}%</span>
     </div>`).join("");
