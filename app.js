@@ -998,9 +998,14 @@ function pushWpmPoint(sec, wpm) {
 
 function validateLetterStats(typed, target) {
   const portion = target.slice(0, typed.length);
-  const expected = [...portion].filter(c => /[a-z]/i.test(c)).length;
-  const actual   = Object.values(state.letterStats).reduce((s, v) => s + v.total, 0);
-  return actual === expected;
+  const expected = {};
+  for (const ch of portion) {
+    if (/[a-z]/i.test(ch)) {
+      const c = ch.toLowerCase();
+      expected[c] = (expected[c] || 0) + 1;
+    }
+  }
+  return Object.entries(expected).every(([c, n]) => (state.letterStats[c]?.total || 0) >= n);
 }
 
 function showInvalidStatsWarning() {
