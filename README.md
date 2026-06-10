@@ -5,10 +5,10 @@
 ## 特色
 
 - **無密碼登入** — 學生以班級座號（五碼數字）直接進入，無需帳號
-- **自訂文章** — 老師可在後台新增任意文章，不受預設內容限制
+- **自訂文章** — 老師可在後台新增任意文章，並標記 tag（練習 / 考試 / 名著）
 - **即時排行榜** — 每次練習後自動更新，可切換同班 / 全體檢視；名條右側顯示成就獎章
-- **考試模式** — 老師指定三種難度各一篇，學生選難度、十五分鐘計時作答
-- **教師後台** — 管理文章、查詢成績、控制考試流程、匯出 Excel；班級升年級遷移
+- **考試模式** — 老師從考試 tag 文章中指定三種難度各一篇，學生選難度、十五分鐘計時作答
+- **教師後台** — 管理文章與標籤、查詢成績、控制考試流程、匯出 Excel；班級升年級遷移
 - **成就系統** — 22 個成就（含 6 個隱藏），解鎖時顯示 futuristic 提示框；集滿 22 個成就名條變金色閃光
 
 ---
@@ -17,7 +17,7 @@
 
 ### 學生端
 - 班級座號登入（前三碼班級 ＋ 後兩碼座號）
-- 文章依難度分為三區塊（初級 / 中級 / 高級），考試文章標有「考試」標籤
+- 文章依難度分為三區塊（初級 / 中級 / 高級）；考試文章標有「考試」badge、名著標有「名著」badge
 - 即時數據：WPM、正確率、游標追蹤、進度列；文章較長時可上下捲動
 - 個別字母正確率分析
 - 個人歷史紀錄 / 班級排行榜
@@ -25,8 +25,8 @@
 - 主題（深色 / 淺色 / 暮色 / 運動服 / 淺紫 / 深紫）與字型大小同步至 Firestore，換裝置也能記住
 
 ### 教師後台
-- 文章管理（新增 / 編輯 / 刪除）
-- 考試管理：選文章、開始 / 結束考試、查看即時成績、重設個別學生
+- 文章管理（新增 / 編輯 / 刪除），每篇可設定 tag：`練習`、`考試`、`名著`（可複選）
+- 考試管理：從考試 tag 文章選文、開始 / 結束考試、查看即時成績、重設個別學生
 - 成績查詢：依座號查詢、班級篩選、全體排行榜
 - 考試成績匯出（.xlsx）
 - 一鍵清除所有學生紀錄
@@ -68,10 +68,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /articles/{id}               { allow read, write: if true; }
-    match /records/{s}/sessions/{id}   { allow read: if true; allow create: if true; }
+    match /records/{s}/sessions/{id}   { allow read: if true; allow create: if true; allow delete: if true; }
     match /leaderboard/{id}            { allow read, write: if true; }
     match /settings/{doc}              { allow read, write: if true; }
-    match /examRecords/{id}            { allow read, write: if true; }
     match /students/{id}               { allow read, write: if true; }
   }
 }
@@ -125,10 +124,10 @@ firebase deploy --only firestore:rules
 
 ### 分數計算公式
 
-#### 練習模式（0–20,000 分）
+#### 練習模式
 
 ```
-分數 = (淨正確率分 × 0.649 + 速度分 × 0.351) × 毛正確率因子 × 難度係數 × 完成度係數
+分數 = (淨正確率分 × 0.649 + 速度分 × 0.351) × 毛正確率因子 × 難度係數 × 完成度係數 × 字數係數
 ```
 
 | 項目 | 計算方式 |
@@ -138,24 +137,25 @@ firebase deploy --only firestore:rules
 | 毛正確率因子 | `(毛正確率 / 100) ^ 0.3` |
 | 難度係數 | 初級 × 0.90、中級 × 0.95、高級 × 1.00 |
 | 完成度係數 | 以 15 WPM 為基準時間，範圍 1–200 |
+| 字數係數 | `(文章字數 + 20) / 100`（80 字 → ×1.00，144 字 → ×1.64） |
 
-**模擬數據（100 字文章）**
+**模擬數據（100 字文章，字數係數 ×1.20）**
 
 | WPM | 淨正確率 | 毛正確率 | 難度 | 分數 | 等第 |
 |-----|---------|---------|------|------|------|
-| 5  | 78% | 70% | 初級 | 1,566 | 多加練習 |
-| 8  | 82% | 75% | 初級 | 3,024 | 多加練習 |
-| 10 | 85% | 78% | 中級 | 4,461 | 多加練習 |
-| 13 | 88% | 83% | 中級 | 6,434 | 繼續加油 |
-| 15 | 93% | 89% | 中級 | 8,231 | 不錯 |
-| 18 | 91% | 86% | 高級 | 10,163 | 優秀 |
-| 20 | 94% | 91% | 高級 | 11,952 | 優秀 |
+| 5  | 78% | 70% | 初級 | 1,879 | 多加練習 |
+| 8  | 82% | 75% | 初級 | 3,629 | 多加練習 |
+| 10 | 85% | 78% | 中級 | 5,354 | 多加練習 |
+| 13 | 88% | 83% | 中級 | 7,721 | 不錯 |
+| 15 | 93% | 89% | 中級 | 9,877 | 優秀 |
+| 18 | 91% | 86% | 高級 | 12,196 | 優秀 |
+| 20 | 94% | 91% | 高級 | 14,343 | 優秀 |
 
 等第閾值：≥ 8,500 優秀 / ≥ 7,000 不錯 / ≥ 5,500 繼續加油
 
 #### 考試模式（0–100 分）
 
-完成度係數改為 `已提交字數 / 文章總字數`（0–1），考試時間為 15 分鐘。
+完成度係數改為 `已提交字數 / 文章總字數`（0–1），考試時間為 15 分鐘。字數係數固定為 ×1.00（不受影響）。
 
 **模擬數據**
 
@@ -189,8 +189,9 @@ firebase deploy --only firestore:rules
 
 - 網址：`/teacher/`（不需 .html）
 - 預設密碼：`teacher123`（可在「設定」分頁修改）
-- 密碼修改後存入 Firestore，並同步至 localStorage 快取
-- 考試用文章（`isExam: true`）學生也可在練習模式中自由使用
+- 密碼以 SHA-256 hash 儲存於 Firestore `settings/teacher`
+- 考試下拉選單僅顯示 tag 為 `考試` 的文章；`練習` 與 `名著` 文章不會出現在考試選項中
+- 考試用文章學生也可在練習模式中自由使用
 - 考試成績存於 leaderboard 集合，不影響練習排行榜
 
 ---
@@ -200,11 +201,12 @@ firebase deploy --only firestore:rules
 ```
 articles/{id}
   title, difficulty (easy/medium/hard), content
+  tags: ["practice"|"exam"|"名著"]   ← 可複選
   isDefault, isExam, createdAt
 
 records/{studentId}/sessions/{sessionId}
   ts, articleId, articleTitle, wpm, accuracy, grossAccuracy
-  score, completionFactor, difficulty, elapsed, letterStats
+  score, completionFactor, wordCount, difficulty, elapsed, letterStats
 
 leaderboard/{studentId}                      # 練習最高分
   studentId, classCode, bestScore, bestWpm
@@ -216,21 +218,14 @@ leaderboard/exam_{examId}__{studentId}       # 考試成績
   articleTitle, isExamResult
   reset (true = 已被老師重設)
 
-settings/teacher    → password
+settings/teacher    → password (SHA-256 hash)
 settings/activeExam → id, classCode, status, articles, startedAt
-settings/seeded     → version (目前 3), seededAt
+settings/seeded     → version (目前 4), seededAt
 
 students/{studentId}                         # 學生個人資料
   studentId, theme, fontSize
   achievements: [ achievement id 陣列 ]
   updatedAt
-
-examRecords/{examId}                         # 考試結束後自動儲存
-  examId, classCode, startedAt, endedAt
-  studentCount
-  articles: { easy, medium, hard }
-    → { id, title, content, difficulty }
-  results: [ 各學生成績陣列，同考試成績欄位 ]
 ```
 
 ---
