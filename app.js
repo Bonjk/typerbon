@@ -399,7 +399,9 @@ async function finishSession(typed) {
     ? Math.min(100, Math.round(correct / state.grossKeystrokes * 100))
     : 100;
   const refTime          = wordCount / 15 * 60;
-  const completionFactor = Math.max(1, Math.min(200, Math.round(refTime / elapsed * 100)));
+  const paceFactor       = Math.max(1, Math.min(200, Math.round(refTime / elapsed * 100)));
+  const completionRatio  = typed.length / target.length;
+  const completionFactor = Math.max(1, Math.round(paceFactor * completionRatio));
   const score = calcScore(wpm, acc, grossAcc, state.currentArticle.difficulty || 'medium', completionFactor, wordCount);
 
   const session = {
