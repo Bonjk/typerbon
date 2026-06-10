@@ -392,7 +392,7 @@ async function finishSession(typed) {
   const target    = state.currentArticle.content;
   const elapsed   = state.elapsed || (Date.now() - state.startTime) / 1000;
   const wordCount = countWords(target);
-  const wpm       = Math.round(wordCount / (elapsed / 60));
+  const wpm       = Math.round(countWords(typed) / (elapsed / 60));
   const correct   = [...typed].filter((c, i) => c === target[i]).length;
   const acc       = Math.round(correct / target.length * 100);
   const grossAcc  = state.grossKeystrokes > 0
