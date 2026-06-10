@@ -408,8 +408,9 @@ function calcScore(wpm, netAcc, grossAcc, difficulty = 'medium', completion = 10
   const w = wpm >= 20 ? 100
     : 100 * Math.sin(Math.PI / 2 * Math.pow(wpm / 20, 0.72));
   const g = Math.pow(Math.min(grossAcc, 100) / 100, 0.3);
+  const accGate = grossAcc >= 80 ? 1 : Math.pow(Math.max(0, grossAcc) / 80, 3);
   const L = (wordCount + 20) / 100;
-  return Math.round((aScore * 0.649 + w * 0.351) * g * D * completion * L);
+  return Math.round((aScore * 0.649 + w * 0.351) * g * accGate * D * completion * L);
 }
 
 function countWords(text) {
