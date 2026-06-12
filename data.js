@@ -256,15 +256,14 @@ const RecordStore = {
 
   /** 取得某學生所有紀錄（最新在前） */
   async getByStudent(studentId) {
-    const snap = await getDocs(
-      query(
-        collection(db, "records", studentId, "sessions"),
-        orderBy("createdAt", "desc")
-      )
-    );
-    return snap.docs.map(d => ({ id: d.id, ...d.data(),
-      ts: d.data().createdAt?.toMillis?.() || d.data().ts || Date.now()
-    }));
+    // 不用 orderBy("createdAt")：剛寫入的文件 createdAt 可能尚未回填，
+    // Firestore 會把該文件排除在排序查詢結果外（見 getAllLeaderboard 註解）。
+    const snap = await getDocs(collection(db, "records", studentId, "sessions"));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data(),
+        ts: d.data().createdAt?.toMillis?.() || d.data().ts || Date.now()
+      }))
+      .sort((a, b) => b.ts - a.ts);
   },
 
   /** 排行榜：取前 50 名（依最高分排序，排除考試紀錄） */
