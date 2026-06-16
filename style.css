@@ -1019,6 +1019,7 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .lb-acc   { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); text-align: right; }
 .lb-ach   { text-align: right; line-height: 0; display: flex; align-items: center; justify-content: flex-end; }
 .lb-medal { width: 30px; height: 30px; display: inline-block; flex-shrink: 0; }
+.lb-medal-plat { filter: drop-shadow(0 0 3px rgba(173,216,230,.8)); }
 
 /* lb-header / lb-row grid: add 50px column for achievements */
 .leaderboard-list .lb-header,

@@ -413,6 +413,8 @@ async function finishSession(typed) {
     wpm, accuracy: acc, grossAccuracy: grossAcc, score,
     completionFactor, wordCount,
     completed: typed.length >= target.length && acc >= 50,
+    completion: Math.round(typed.length / target.length * 100),
+    keystrokes: state.grossKeystrokes,
     elapsed: Math.round(elapsed),
     letterStats: { ...state.letterStats },
   };
@@ -603,7 +605,7 @@ async function renderLeaderboard() {
       const isSelf  = r.studentId === state.studentId;
       const medal   = medals[r.rank - 1] || r.rank;
       const achCnt  = r.achievementCount || 0;
-      const isGold  = achCnt >= 22;
+      const isGold  = achCnt >= ACHIEVEMENTS.length;
       return `
         <div class="lb-row ${isSelf ? "lb-self" : ""} ${isGold ? "lb-gold" : ""}">
           <span class="lb-rank">${medal}</span>
@@ -1102,14 +1104,17 @@ function renderHistoryChart(records) {
 // ── MEDAL SVG ─────────────────────────────────────────────
 function medalSvg(count) {
   if (!count) return '';
-  const [fill, stroke] = count >= 20
-    ? ['#FFD700', '#A08000']
-    : count >= 11
-    ? ['#BEC2CB', '#8E9199']
-    : ['#CD7F32', '#8B5A2B'];
-  const star = 'M 115.08 115.08 L 115.08 48 L 163 95.92 L 210.92 48 L 210.92 115.08 L 278 115.08 L 230.08 163 L 278 210.92 L 210.92 210.92 L 210.92 278 L 163 230.08 L 115.08 278 L 115.08 210.92 L 48 210.92 L 95.92 163 L 48 115.08 Z';
-  const oct  = 'M 129.75 96 L 197.25 96 L 231 129.75 L 231 197.25 L 197.25 231 L 129.75 231 L 96 197.25 L 96 129.75 Z';
-  return `<svg class="lb-medal" viewBox="0 0 327 327" xmlns="http://www.w3.org/2000/svg"><path d="${star}" fill="#DC2626" stroke="#991B1B" stroke-width="6" transform="rotate(45,163,163)"/><path d="${oct}" fill="${fill}" stroke="${stroke}" stroke-width="5" transform="rotate(45,163.5,163.5)"/></svg>`;
+  const ALL = ACHIEVEMENTS.length;
+  const [face, edge] =
+      count >= ALL ? ['#E6ECF5', '#9DB0CC']   // 白金（集滿全部）
+    : count >= 20  ? ['#FFD700', '#A08000']   // 金
+    : count >= 10  ? ['#BEC2CB', '#8E9199']   // 銀
+    :                ['#CD7F32', '#8B5A2B'];  // 銅
+  const star = 'M50 31 L56.7 44.6 L71.6 46.8 L60.8 57.3 L63.4 72.2 L50 65.2 L36.6 72.2 L39.2 57.3 L28.4 46.8 L43.3 44.6 Z';
+  return `<svg class="lb-medal${count >= ALL ? ' lb-medal-plat' : ''}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">`
+    + `<rect x="18" y="26" width="64" height="58" rx="13" fill="${edge}"/>`
+    + `<rect x="18" y="18" width="64" height="58" rx="13" fill="${face}" stroke="${edge}" stroke-width="3"/>`
+    + `<path d="${star}" fill="${edge}" opacity=".85"/></svg>`;
 }
 
 // ── ACHIEVEMENTS ──────────────────────────────────────────
@@ -1174,6 +1179,7 @@ async function checkAchievements(session, allSessions, isExam) {
       if (wpm >= 15) await award("speed_15");
       if (wpm >= 20) await award("speed_20");
       if (wpm >= 25) await award("speed_25");
+      if (wpm >= 30) await award("speed_30");
     }
 
     // ── 首次練習
@@ -1181,6 +1187,7 @@ async function checkAchievements(session, allSessions, isExam) {
 
     // ── 正確率
     if (session.accuracy === 100) await award("accuracy_100");
+    if (completed && session.difficulty === "hard" && session.accuracy === 100) await award("hard_perfect");
     if (allSessions) {
       const recent5 = allSessions.slice(0, 5);
       if (recent5.length >= 5 && recent5.every(r => r.accuracy >= 95))
@@ -1191,12 +1198,17 @@ async function checkAchievements(session, allSessions, isExam) {
     if (allSessions) {
       const completedSessions = allSessions.filter(r => r.completed !== false);
       const total = completedSessions.length;
-      if (total >= 5)  await award("sessions_5");
-      if (total >= 20) await award("sessions_20");
-      if (total >= 50) await award("sessions_50");
+      if (total >= 5)   await award("sessions_5");
+      if (total >= 20)  await award("sessions_20");
+      if (total >= 50)  await award("sessions_50");
+      if (total >= 100) await award("sessions_100");
       // 不同日期
       const days = new Set(completedSessions.map(r => new Date(r.ts).toDateString()));
-      if (days.size >= 5) await award("days_5");
+      if (days.size >= 5)  await award("days_5");
+      if (days.size >= 10) await award("days_10");
+      // 累積完成字數
+      const totalWords = completedSessions.reduce((s, r) => s + (r.wordCount || 0), 0);
+      if (totalWords >= 5000) await award("words_5000");
       // WPM 最高紀錄（需完成；先前最佳也只取已完成紀錄，避免被灌水 WPM 卡死）
       if (completed && completedSessions.length >= 2) {
         const prevBest = Math.max(0, ...completedSessions.slice(1).map(r => r.wpm || 0));
@@ -1209,12 +1221,24 @@ async function checkAchievements(session, allSessions, isExam) {
     if (score % 100 === 67)                             await award("sixseven");
     const wc = countWords(state.currentArticle?.content || "");
     if (completed && wc >= 120) await award("long_article");
+    // 完成彩蛋（純長度 completion + 毛正確率，不走 completed）
+    if (session.completion === 100 && session.elapsed >= 1200) await award("persevere");
+    if (session.completion === 100 && session.grossAccuracy === 0) await award("you_sure");
+    if (session.completion === 100 && session.grossAccuracy === 0
+        && session.keystrokes === (state.currentArticle?.content?.length ?? -1)) await award("world_wrong");
+    // 好笑數字彩蛋（亂打分數 ≈0，自然打不中）
+    if (score > 0 && score % 1000 === 0) await award("score_round");
+    if (score % 1000 === 520)            await award("score_520");
+    if (score % 10000 === 1314)          await award("score_1314");
+    const ss = String(score);
+    if (ss.length >= 3 && ss === [...ss].reverse().join("")) await award("score_palindrome");
   } else {
     // ── 考試
     await award("exam_first");
     if (score >= 85)  await award("exam_excellent");
     if (score >= 100) await award("exam_perfect");
     if (session.difficulty === "hard" && session.completed) await award("exam_hard");
+    if (session.completed && session.wpm >= 20) await award("exam_speed");
 
     // 不慌不忙：考試完整作答（正確率達標）且剩 30% 時間
     const deadline  = state.examDeadline;
