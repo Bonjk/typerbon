@@ -542,10 +542,10 @@ const ACHIEVEMENTS = [
   { id: "speed_15",       category: "speed",    name: "超越門檻",            desc: "單次達到 15 WPM",               hidden: false },
   { id: "speed_20",       category: "speed",    name: "行雲流水",            desc: "單次達到 20 WPM",               hidden: false },
   { id: "speed_25",       category: "speed",    name: "快意飛騰",            desc: "單次達到 25 WPM",               hidden: false },
-  { id: "speed_30",       category: "speed",    name: "颶風之手",            desc: "單次完成練習達到 30 WPM",       hidden: false },
+  { id: "speed_30",       category: "speed",    name: "颶風之手",            desc: "單次達到 30 WPM",               hidden: false },
   // 正確率
-  { id: "accuracy_100",   category: "accuracy", name: "謹慎嚴謹",            desc: "任一次淨正確率 100%",           hidden: false },
-  { id: "accuracy_streak",category: "accuracy", name: "穩定發揮",            desc: "連續 5 次正確率 ≥ 95%",        hidden: false },
+  { id: "accuracy_100",   category: "accuracy", name: "謹慎嚴謹",            desc: "單次淨正確率 100%",             hidden: false },
+  { id: "accuracy_streak",category: "accuracy", name: "穩定發揮",            desc: "連續 5 次淨正確率 ≥ 95%",      hidden: false },
   { id: "hard_perfect",   category: "accuracy", name: "字字珠璣",            desc: "高級文章完成且淨正確率 100%",   hidden: false },
   // 堅持
   { id: "sessions_5",     category: "persist",  name: "勇於嘗試",            desc: "完成 5 次練習",                 hidden: false },
@@ -568,15 +568,15 @@ const ACHIEVEMENTS = [
   { id: "long_article",   category: "special",  name: "長文挑戰者",          desc: "完成一篇 ≥ 120 個單字的文章",   hidden: true },
   { id: "exam_early",     category: "special",  name: "不慌不忙",            desc: "考試剩 30% 時間時已完成",       hidden: true },
   { id: "sixseven",       category: "special",  name: "sixseven!",           desc: "分數尾數為 67",                 hidden: true },
-  { id: "perfect_match",  category: "special",  name: "控分傳奇",            desc: "考試中毛確率 / 淨確率 / 完成度 / 分數四值四捨五入後相同", hidden: true },
+  { id: "perfect_match",  category: "special",  name: "控分傳奇",            desc: "考試的毛正確率、淨正確率、完成度、分數四捨五入後相同", hidden: true },
   { id: "no_backspace",   category: "special",  name: "不需要你",            desc: "全程不按 Backspace 完成一篇文章", hidden: true },
   { id: "persevere",      category: "special",  name: "鍥而不捨",            desc: "完成度 100% 且耗時 ≥ 20 分鐘",  hidden: true },
   { id: "you_sure",       category: "special",  name: "你確定？",            desc: "完成度 100% 且毛正確率 0%",     hidden: true },
   { id: "world_wrong",    category: "special",  name: "這世界錯了",          desc: "完成度 100%、毛正確率 0%、按鍵次數剛好等於文章字元數", hidden: true },
-  { id: "score_round",    category: "special",  name: "完美整數",            desc: "練習分數為 1000 的整數倍",      hidden: true },
-  { id: "score_520",      category: "special",  name: "我愛打字",            desc: "練習分數尾數為 520",            hidden: true },
-  { id: "score_1314",     category: "special",  name: "一生一世",            desc: "練習分數尾數為 1314",           hidden: true },
-  { id: "score_palindrome",category: "special", name: "正反都一樣",          desc: "練習分數為迴文數（≥ 3 位）",     hidden: true },
+  { id: "score_round",    category: "special",  name: "完美整數",            desc: "分數為 1000 的整數倍",          hidden: true },
+  { id: "score_520",      category: "special",  name: "我愛打字",            desc: "分數尾數為 520",                hidden: true },
+  { id: "score_1314",     category: "special",  name: "一生一世",            desc: "分數尾數為 1314",               hidden: true },
+  { id: "score_palindrome",category: "special", name: "正反都一樣",          desc: "分數為迴文數（≥ 3 位）",         hidden: true },
 ];
 
 // ── StudentStore ───────────────────────────────────────────
