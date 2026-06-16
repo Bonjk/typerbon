@@ -392,7 +392,8 @@ async function finishSession(typed) {
   const target    = state.currentArticle.content;
   const elapsed   = state.elapsed || (Date.now() - state.startTime) / 1000;
   const wordCount = countWords(target);
-  const wpm       = Math.round(countWords(typed) / (elapsed / 60));
+  const wpm       = (typed.length > 0 && elapsed > 0.5)
+    ? Math.round(countWords(typed) / (elapsed / 60)) : 0;
   const correct   = [...typed].filter((c, i) => c === target[i]).length;
   const acc       = Math.round(correct / target.length * 100);
   const grossAcc  = state.grossKeystrokes > 0
@@ -411,6 +412,7 @@ async function finishSession(typed) {
     difficulty:   state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc, score,
     completionFactor, wordCount,
+    completed: typed.length >= target.length && acc >= 50,
     elapsed: Math.round(elapsed),
     letterStats: { ...state.letterStats },
   };
@@ -778,6 +780,7 @@ async function submitExam(typed, isFinal = false) {
     difficulty: state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc,
     completion, score, elapsed: Math.round(elapsed),
+    completed: completion === 100 && acc >= 50,
     articleTitle: state.currentArticle.title,
     letterStats: { ...state.letterStats },
   };
@@ -1162,11 +1165,16 @@ async function checkAchievements(session, allSessions, isExam) {
   const score = session.score  || 0;
 
   if (!isExam) {
-    // ── 速度
-    if (wpm >= 10) await award("speed_10");
-    if (wpm >= 15) await award("speed_15");
-    if (wpm >= 20) await award("speed_20");
-    if (wpm >= 25) await award("speed_25");
+    // 完成性成就要求真正打完整篇文章且正確率達標（提前交卷或亂打灌滿長度都不算）
+    const completed = session.completed === true;
+
+    // ── 速度（需完成整篇）
+    if (completed) {
+      if (wpm >= 10) await award("speed_10");
+      if (wpm >= 15) await award("speed_15");
+      if (wpm >= 20) await award("speed_20");
+      if (wpm >= 25) await award("speed_25");
+    }
 
     // ── 首次練習
     await award("first_session");
@@ -1179,18 +1187,19 @@ async function checkAchievements(session, allSessions, isExam) {
         await award("accuracy_streak");
     }
 
-    // ── 堅持
+    // ── 堅持（只計算真正完成的紀錄；舊紀錄無 completed 欄位 → 視為已完成）
     if (allSessions) {
-      const total = allSessions.length;
+      const completedSessions = allSessions.filter(r => r.completed !== false);
+      const total = completedSessions.length;
       if (total >= 5)  await award("sessions_5");
       if (total >= 20) await award("sessions_20");
       if (total >= 50) await award("sessions_50");
       // 不同日期
-      const days = new Set(allSessions.map(r => new Date(r.ts).toDateString()));
+      const days = new Set(completedSessions.map(r => new Date(r.ts).toDateString()));
       if (days.size >= 5) await award("days_5");
-      // WPM 最高紀錄（第二筆以上才能超越）
-      if (allSessions.length >= 2) {
-        const prevBest = Math.max(...allSessions.slice(1).map(r => r.wpm || 0));
+      // WPM 最高紀錄（需完成；先前最佳也只取已完成紀錄，避免被灌水 WPM 卡死）
+      if (completed && completedSessions.length >= 2) {
+        const prevBest = Math.max(0, ...completedSessions.slice(1).map(r => r.wpm || 0));
         if (wpm > prevBest) await award("wpm_record");
       }
     }
@@ -1199,20 +1208,20 @@ async function checkAchievements(session, allSessions, isExam) {
     if (session.accuracy === 100 && state.noBackspace) await award("no_backspace");
     if (score % 100 === 67)                             await award("sixseven");
     const wc = countWords(state.currentArticle?.content || "");
-    if (wc >= 120) await award("long_article");
+    if (completed && wc >= 120) await award("long_article");
   } else {
     // ── 考試
     await award("exam_first");
     if (score >= 85)  await award("exam_excellent");
     if (score >= 100) await award("exam_perfect");
-    if (session.difficulty === "hard") await award("exam_hard");
+    if (session.difficulty === "hard" && session.completed) await award("exam_hard");
 
-    // 不慌不忙：考試剩 30% 時間完成
+    // 不慌不忙：考試完整作答（正確率達標）且剩 30% 時間
     const deadline  = state.examDeadline;
     const totalTime = 15 * 60 * 1000;
     if (deadline) {
       const remaining = deadline - Date.now();
-      if (remaining >= totalTime * 0.30) await award("exam_early");
+      if (session.completed && remaining >= totalTime * 0.30) await award("exam_early");
     }
 
     // 控分傳奇
@@ -1225,8 +1234,8 @@ async function checkAchievements(session, allSessions, isExam) {
     // sixseven 也在考試觸發
     if (score % 100 === 67) await award("sixseven");
 
-    // no_backspace 在考試也觸發（完成度 100%）
-    if (session.completion === 100 && state.noBackspace) await award("no_backspace");
+    // no_backspace 在考試也觸發（需完整作答且全對）
+    if (session.completion === 100 && session.accuracy === 100 && state.noBackspace) await award("no_backspace");
   }
 
   // 逐一顯示 toast
