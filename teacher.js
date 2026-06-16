@@ -375,8 +375,9 @@ const ACH_CAT_LABEL = { speed:"速度", accuracy:"正確率", persist:"堅持", 
 async function queryStudentAchievements() {
   const id = $("ach-student-id").value.trim();
   const resultEl = $("ach-manage-result");
-  if (!validateStudentId(id)) {
-    resultEl.innerHTML = `<div class="input-error">請輸入正確的五碼班級座號</div>`;
+  const err = validateStudentId(id);   // 回傳錯誤字串代表無效，null 代表有效
+  if (err) {
+    resultEl.innerHTML = `<div class="input-error">${escHtml(err)}</div>`;
     return;
   }
   resultEl.innerHTML = `<div class="loading-state">查詢中...</div>`;
