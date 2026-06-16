@@ -412,7 +412,7 @@ async function finishSession(typed) {
     difficulty:   state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc, score,
     completionFactor, wordCount,
-    completed: typed.length >= target.length,
+    completed: typed.length >= target.length && acc >= 50,
     elapsed: Math.round(elapsed),
     letterStats: { ...state.letterStats },
   };
@@ -780,7 +780,7 @@ async function submitExam(typed, isFinal = false) {
     difficulty: state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc,
     completion, score, elapsed: Math.round(elapsed),
-    completed: completion === 100,
+    completed: completion === 100 && acc >= 50,
     articleTitle: state.currentArticle.title,
     letterStats: { ...state.letterStats },
   };
@@ -1165,7 +1165,7 @@ async function checkAchievements(session, allSessions, isExam) {
   const score = session.score  || 0;
 
   if (!isExam) {
-    // 完成性成就一律要求真正打完整篇文章（提前交卷不算）
+    // 完成性成就要求真正打完整篇文章且正確率達標（提前交卷或亂打灌滿長度都不算）
     const completed = session.completed === true;
 
     // ── 速度（需完成整篇）
@@ -1214,14 +1214,14 @@ async function checkAchievements(session, allSessions, isExam) {
     await award("exam_first");
     if (score >= 85)  await award("exam_excellent");
     if (score >= 100) await award("exam_perfect");
-    if (session.difficulty === "hard" && session.completion === 100) await award("exam_hard");
+    if (session.difficulty === "hard" && session.completed) await award("exam_hard");
 
-    // 不慌不忙：考試完整作答且剩 30% 時間
+    // 不慌不忙：考試完整作答（正確率達標）且剩 30% 時間
     const deadline  = state.examDeadline;
     const totalTime = 15 * 60 * 1000;
     if (deadline) {
       const remaining = deadline - Date.now();
-      if (session.completion === 100 && remaining >= totalTime * 0.30) await award("exam_early");
+      if (session.completed && remaining >= totalTime * 0.30) await award("exam_early");
     }
 
     // 控分傳奇
@@ -1234,8 +1234,8 @@ async function checkAchievements(session, allSessions, isExam) {
     // sixseven 也在考試觸發
     if (score % 100 === 67) await award("sixseven");
 
-    // no_backspace 在考試也觸發（完成度 100%）
-    if (session.completion === 100 && state.noBackspace) await award("no_backspace");
+    // no_backspace 在考試也觸發（需完整作答且全對）
+    if (session.completion === 100 && session.accuracy === 100 && state.noBackspace) await award("no_backspace");
   }
 
   // 逐一顯示 toast
