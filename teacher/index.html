@@ -52,6 +52,7 @@
     <button class="tab" data-teacher-tab="leaderboard">排行榜</button>
     <button class="tab" data-teacher-tab="settings">設定</button>
     <button class="tab" data-teacher-tab="exam">考試管理</button>
+    <button class="tab" data-teacher-tab="achievements">成就管理</button>
   </div>
 
   <!-- ── TAB: 文章管理 ── -->
@@ -255,6 +256,25 @@
         <h3 class="section-title" style="margin-bottom:14px">考試記錄</h3>
         <div id="exam-records-list"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: 成就管理 ── -->
+  <div id="teacher-tab-achievements" class="tab-content">
+    <div class="section-card">
+      <div class="panel-header">
+        <h2 class="section-title">成就管理</h2>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="flex:1;min-width:200px">
+          <label>班級座號</label>
+          <input type="text" id="ach-student-id" placeholder="五碼，如 80213" maxlength="5" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-query-ach">查詢</button>
+        <button class="btn-secondary btn-sm" id="btn-ach-all">一鍵全給</button>
+        <button class="btn-secondary btn-sm" id="btn-ach-clear">全部清除</button>
+      </div>
+      <div id="ach-manage-result" class="student-records-result"></div>
     </div>
   </div>
 

@@ -1,10 +1,10 @@
 /**
  * teacher.js — 教師後台邏輯（Firebase 版）
  */
-import { ArticleStore, RecordStore, ExamStore, TeacherAuth,
+import { ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore, ACHIEVEMENTS,
          countWords, formatDate, validateStudentId, showToast, escHtml } from "./data.js";
 
-const teacherState = { editingId: null, leaderboardCache: null, examArticles: null };
+const teacherState = { editingId: null, leaderboardCache: null, examArticles: null, achStudentId: null };
 const $ = id => document.getElementById(id);
 
 function initTheme() {
@@ -63,20 +63,26 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") { const cls = $("lb-class-filter").value.trim(); renderTeacherLeaderboard(cls || null); }
   });
   $("btn-lb-all").addEventListener("click", () => renderTeacherLeaderboard(null));
+
+  $("btn-query-ach").addEventListener("click", queryStudentAchievements);
+  $("ach-student-id").addEventListener("keydown", e => { if (e.key === "Enter") queryStudentAchievements(); });
+  $("btn-ach-all").addEventListener("click", () => bulkSetAchievements(ACHIEVEMENTS.map(a => a.id)));
+  $("btn-ach-clear").addEventListener("click", () => bulkSetAchievements([]));
 });
 
 // ── TAB SWITCHING ──────────────────────────────────────────
 function switchTeacherTab(name) {
   document.querySelectorAll("[data-teacher-tab]").forEach(t =>
     t.classList.toggle("active", t.dataset.teacherTab === name));
-  ["articles", "records", "leaderboard", "settings", "exam"].forEach(t => {
+  ["articles", "records", "leaderboard", "settings", "exam", "achievements"].forEach(t => {
     const el = document.getElementById(`teacher-tab-${t}`);
     if (el) el.classList.toggle("active", t === name);
   });
-  if (name === "articles")    renderTeacherArticleList();
-  if (name === "records")     loadClassDropdown();
-  if (name === "leaderboard") renderTeacherLeaderboard(null);
-  if (name === "exam")        loadExamTab();
+  if (name === "articles")     renderTeacherArticleList();
+  if (name === "records")      loadClassDropdown();
+  if (name === "leaderboard")  renderTeacherLeaderboard(null);
+  if (name === "exam")         loadExamTab();
+  if (name === "achievements") { $("ach-manage-result").innerHTML = ""; teacherState.achStudentId = null; }
 }
 
 // ── LOGIN ──────────────────────────────────────────────────
@@ -361,6 +367,60 @@ async function queryStudent() {
           <span class="hr-acc">${r.accuracy}%</span>
         </div>`).join("")}
     </div>`;
+}
+
+// ── ACHIEVEMENT MANAGEMENT ─────────────────────────────────
+const ACH_CAT_LABEL = { speed:"速度", accuracy:"正確率", persist:"堅持", progress:"進步", exam:"考試", special:"特殊" };
+
+async function queryStudentAchievements() {
+  const id = $("ach-student-id").value.trim();
+  const resultEl = $("ach-manage-result");
+  if (!validateStudentId(id)) {
+    resultEl.innerHTML = `<div class="input-error">請輸入正確的五碼班級座號</div>`;
+    return;
+  }
+  resultEl.innerHTML = `<div class="loading-state">查詢中...</div>`;
+  const profile = await StudentStore.get(id);
+  teacherState.achStudentId = id;
+  renderAchManage(id, new Set(profile.achievements || []));
+}
+
+function renderAchManage(id, earned) {
+  const resultEl = $("ach-manage-result");
+  const byCat = {};
+  ACHIEVEMENTS.forEach(a => { (byCat[a.category] ??= []).push(a); });
+
+  let html = `<div class="sr-header">班級座號：${escHtml(id)} — 已獲得 ${earned.size} / ${ACHIEVEMENTS.length}</div>`;
+  for (const [cat, list] of Object.entries(byCat)) {
+    html += `<div class="ach-category-label">${ACH_CAT_LABEL[cat] || cat}</div><div class="tag-check-group">`;
+    for (const a of list) {
+      const checked = earned.has(a.id) ? "checked" : "";
+      html += `<label class="tag-check-label" title="${escHtml(a.desc)}">
+        <input type="checkbox" class="ach-toggle" data-ach="${a.id}" ${checked}> ${escHtml(a.name)}</label>`;
+    }
+    html += `</div>`;
+  }
+  resultEl.innerHTML = html;
+
+  resultEl.querySelectorAll(".ach-toggle").forEach(cb =>
+    cb.addEventListener("change", () => toggleAchievement(cb.dataset.ach, cb.checked)));
+}
+
+async function toggleAchievement(achId, grant) {
+  const id = teacherState.achStudentId;
+  if (!id) return;
+  if (grant) await StudentStore.awardAchievement(id, achId);
+  else       await StudentStore.removeAchievement(id, achId);
+  const ach = ACHIEVEMENTS.find(a => a.id === achId);
+  showToast(`${grant ? "已授予" : "已取消"}「${ach ? ach.name : achId}」`);
+}
+
+async function bulkSetAchievements(ids) {
+  const id = teacherState.achStudentId;
+  if (!id) { showToast("請先查詢學生"); return; }
+  await StudentStore.setAchievements(id, ids);
+  renderAchManage(id, new Set(ids));
+  showToast(ids.length ? "已全部授予" : "已全部清除");
 }
 
 async function exportAllCSV() {
