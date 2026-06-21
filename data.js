@@ -580,6 +580,17 @@ const ExamStore = {
     return rec.exists() ? (rec.data().joined || []) : [];
   },
 
+  /** 一次讀全 leaderboard，依 examId 分組即時成績（給教師端記錄即時顯示用） */
+  async getAllExamResultsByExam() {
+    const snap = await getDocs(collection(db, "leaderboard"));
+    const map = {};
+    snap.docs.map(d => d.data())
+      .filter(d => d.isExamResult && d.examId && !d.reset)
+      .forEach(r => { (map[r.examId] ??= []).push(r); });
+    Object.values(map).forEach(arr => arr.sort((a, b) => (b.score || 0) - (a.score || 0)));
+    return map;
+  },
+
   /** 取得所有考試記錄（含成績快照，依開始時間降序） */
   async getRecords() {
     const snap = await getDocs(collection(db, "examRecords"));

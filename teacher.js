@@ -83,6 +83,7 @@ function switchTeacherTab(name) {
   if (name === "leaderboard")  renderTeacherLeaderboard(null);
   if (name === "exam")         loadExamTab();
   if (name === "achievements") { $("ach-manage-result").innerHTML = ""; teacherState.achStudentId = null; }
+  if (name !== "exam") clearInterval(teacherState.examPollTimer);   // 離開考試分頁停止輪詢
 }
 
 // ── LOGIN ──────────────────────────────────────────────────
@@ -592,10 +593,19 @@ async function populateExamPicker(preferId) {
 
 // 載入選定場次的成績（補登/缺交/改分/匯出都對此 examId 操作）
 async function loadExamForSelected(examId) {
+  clearInterval(teacherState.examPollTimer);
   if (!examId) return;
   const meta = (teacherState.examList || []).find(e => e.examId === examId);
   const joined = await ExamStore.getExamJoined(examId, meta?.status).catch(() => []);
   loadExamResults(examId, meta?.classCode || "", joined);
+  // 進行中考試：自動輪詢刷新，讓學生即時交卷/改善自動出現
+  if (meta?.status === "active") {
+    teacherState.examPollTimer = setInterval(async () => {
+      if (!$("exam-pick") || $("exam-pick").value !== examId) { clearInterval(teacherState.examPollTimer); return; }
+      const j = await ExamStore.getExamJoined(examId, "active").catch(() => joined);
+      loadExamResults(examId, meta.classCode || "", j);
+    }, 10000);
+  }
 }
 
 function renderExamCurrentStatus(exam) {
@@ -763,6 +773,7 @@ async function setExamScore(examId, studentId, rawScore) {
     await ExamStore.overrideScore(examId, studentId, score);
     showToast(`已將 ${studentId} 的分數設為 ${score}`);
     loadExamResults(examId, teacherState.examClassCode, teacherState.examJoined);
+    loadExamRecords();   // 底部考試記錄即時同步
   } catch (e) {
     showToast("寫入失敗：" + e.message);
   }
@@ -802,6 +813,7 @@ async function retakeStudent(examId, studentId) {
     await ExamStore.resetStudentFull(examId, studentId);
     showToast(`${studentId} 已重設，可重新進入考試`);
     loadExamForSelected(examId);
+    loadExamRecords();
   } catch(e) {
     showToast("操作失敗：" + e.message);
   }
@@ -818,6 +830,7 @@ async function resetStudentById(examId) {
     showToast(`${id} 已重設，可重新進入考試`);
     $("reset-student-id").value = "";
     loadExamForSelected(examId);
+    loadExamRecords();
   } catch(e) {
     errEl.textContent = "操作失敗：" + e.message;
   }
@@ -862,9 +875,12 @@ async function loadExamRecords() {
   if (!container) return;
   container.innerHTML = `<div class="loading-state">載入考試記錄中...</div>`;
 
-  let records;
+  let records, liveByExam;
   try {
-    records = await ExamStore.getRecords();
+    [records, liveByExam] = await Promise.all([
+      ExamStore.getRecords(),
+      ExamStore.getAllExamResultsByExam().catch(() => ({})),
+    ]);
   } catch {
     container.innerHTML = `<div class="empty-state">無法載入考試記錄，請確認 Firestore 規則已包含 examRecords 集合。</div>`;
     return;
@@ -878,9 +894,11 @@ async function loadExamRecords() {
   const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
 
   container.innerHTML = records.map(rec => {
-    const endedAt = rec.endedAt?.toDate?.() ?? null;
-    const dateStr = endedAt
-      ? endedAt.toLocaleDateString("zh-TW") + " " + endedAt.toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" })
+    // 成績用即時 leaderboard（補登/重考即時反映），meta 用 examRecords 快照
+    const liveResults = (liveByExam[rec.examId] || []).map((r, i) => ({ ...r, rank: i + 1 }));
+    const dt = rec.endedAt?.toDate?.() ?? rec.startedAt?.toDate?.() ?? null;
+    const dateStr = dt
+      ? dt.toLocaleDateString("zh-TW") + " " + dt.toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" })
       : "—";
     const arts = Object.values(rec.articles || {}).map(a =>
       `<span style="color:var(--text-muted);font-size:.78rem">${diffLabel[a.difficulty] || "—"}：${escHtml(a.title)}</span>`
@@ -892,13 +910,13 @@ async function loadExamRecords() {
           <div class="erc-meta">
             <span class="erc-class">${escHtml(rec.classCode)} 班</span>
             <span class="erc-date">${dateStr}</span>
-            <span class="erc-count">${rec.studentCount ?? 0} 人提交</span>
+            <span class="erc-count">${liveResults.length} 人提交</span>
           </div>
           <div class="erc-arts">${arts}</div>
           <button class="btn-secondary btn-sm erc-toggle">展開</button>
         </div>
         <div class="erc-body" style="display:none">
-          ${renderRecordResults(rec)}
+          ${renderRecordResults({ ...rec, results: liveResults })}
           <button class="btn-secondary btn-sm erc-export" style="margin-top:10px">匯出 Excel</button>
         </div>
       </div>`;
@@ -917,7 +935,7 @@ async function loadExamRecords() {
     btn.addEventListener("click", () => {
       const card = btn.closest(".exam-record-card");
       const rec  = records.find(r => r.examId === card.dataset.id);
-      if (rec) exportRecordExcel(rec);
+      if (rec) exportRecordExcel({ ...rec, results: (liveByExam[rec.examId] || []) });
     });
   });
 }

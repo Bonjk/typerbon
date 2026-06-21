@@ -1267,6 +1267,15 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .exam-confirm-btns {
   display: flex; gap: 8px; flex-wrap: wrap;
 }
+.exam-upload-status {
+  margin: 4px auto 12px; max-width: 520px; text-align: center;
+  font-family: var(--font-mono); font-size: .82rem; font-weight: 700;
+  padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+}
+.exam-upload-status.uploading { color: var(--accent);   border-color: var(--accent);   background: rgba(245,200,66,.08); }
+.exam-upload-status.done      { color: #3ecf8e;          border-color: rgba(62,207,142,.4); background: rgba(62,207,142,.08); }
+.exam-upload-status.pending   { color: var(--danger);    border-color: var(--danger);   background: rgba(242,95,92,.08); }
+
 .btn-exam-confirm {
   flex: 1; min-width: 80px;
   padding: 10px 6px;
