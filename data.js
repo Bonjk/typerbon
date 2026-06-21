@@ -466,19 +466,27 @@ const ExamStore = {
       await updateDoc(ref, { joined: arrayUnion(studentId) }).catch(() => {});
   },
 
-  /** 開始考試：傳入三篇文章 { easy, medium, hard } */
+  /** 開始考試：傳入三篇文章 { easy, medium, hard }。
+   *  考試 id 採可讀格式「班級-年-月-日-時-分」，每場以此 id 為單位記錄。 */
   async start(classCode, articles) {
-    const id = `exam_${Date.now()}`;
+    const p  = n => String(n).padStart(2, "0");
+    const d  = new Date();
+    const id = `${classCode}-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}-${p(d.getMinutes())}`;
     const pack = (a) => ({ id: a.id, title: a.title, content: a.content, difficulty: a.difficulty });
+    const articlePack = {
+      easy:   pack(articles.easy),
+      medium: pack(articles.medium),
+      hard:   pack(articles.hard),
+    };
     await setDoc(doc(db, "settings", "activeExam"), {
-      id, classCode,
-      articles: {
-        easy:   pack(articles.easy),
-        medium: pack(articles.medium),
-        hard:   pack(articles.hard),
-      },
+      id, classCode, articles: articlePack,
       status:    "active",
       startedAt: serverTimestamp(),
+    });
+    // 同時建立場次索引（以 examId 為鍵），讓教師可日後選此場補登/檢視
+    await setDoc(doc(db, "examRecords", id), {
+      examId: id, classCode, articles: articlePack,
+      startedAt: serverTimestamp(), status: "active",
     });
     return id;
   },
@@ -528,30 +536,56 @@ const ExamStore = {
       .map((r, i) => ({ ...r, rank: i + 1 }));
   },
 
-  /** 結束考試前：將完整考試記錄（文章、日期、所有成績）存入 examRecords */
+  /** 結束考試：更新該場索引（補上結束時間、成績快照、缺交名冊），不另建新文件 */
   async saveRecord(examId) {
     const examSnap = await getDoc(doc(db, "settings", "activeExam"));
-    if (!examSnap.exists()) return;
-    const exam = examSnap.data();
+    const exam = examSnap.exists() ? examSnap.data() : {};
     const results = await this.getResults(examId);
     await setDoc(doc(db, "examRecords", examId), {
       examId,
       classCode:    exam.classCode,
       articles:     exam.articles || {},
-      startedAt:    exam.startedAt,
       endedAt:      serverTimestamp(),
       studentCount: results.length,
       joined:       exam.joined || [],
       results,
-    });
+      status:       "ended",
+    }, { merge: true });
   },
 
-  /** 取得所有考試記錄（依結束時間降序） */
+  /** 列出所有考試場次（供教師下拉選擇；不用 orderBy 以免缺欄位被略過，前端排序） */
+  async listExams() {
+    const snap = await getDocs(collection(db, "examRecords"));
+    return snap.docs
+      .map(d => {
+        const x = d.data();
+        return {
+          examId:    x.examId || d.id,
+          classCode: x.classCode || "",
+          status:    x.status || (x.endedAt ? "ended" : "active"),
+          startedAt: x.startedAt?.toMillis?.() ?? 0,
+          endedAt:   x.endedAt?.toMillis?.() ?? null,
+        };
+      })
+      .sort((a, b) => b.startedAt - a.startedAt);
+  },
+
+  /** 取得某場考試的缺交名冊：進行中讀 activeExam，否則讀該場 examRecords 快照 */
+  async getExamJoined(examId, status) {
+    if (status === "active") {
+      const snap = await getDoc(doc(db, "settings", "activeExam"));
+      if (snap.exists() && snap.data().id === examId) return snap.data().joined || [];
+    }
+    const rec = await getDoc(doc(db, "examRecords", examId));
+    return rec.exists() ? (rec.data().joined || []) : [];
+  },
+
+  /** 取得所有考試記錄（含成績快照，依開始時間降序） */
   async getRecords() {
-    const snap = await getDocs(
-      query(collection(db, "examRecords"), orderBy("endedAt", "desc"))
-    );
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, "examRecords"));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.startedAt?.toMillis?.() ?? 0) - (a.startedAt?.toMillis?.() ?? 0));
   },
 };
 

@@ -557,16 +557,52 @@ async function loadExamTab() {
 
   const exam = await ExamStore.getCurrent();
   renderExamCurrentStatus(exam);
+  await populateExamPicker(exam && exam.status === "active" ? exam.id : null);
   loadExamRecords();
+}
+
+// 場次下拉：列出所有考試，預設選進行中那場（或最新一場）
+async function populateExamPicker(preferId) {
+  const sel = $("exam-pick");
+  if (!sel) return;
+  let exams = [];
+  try { exams = await ExamStore.listExams(); } catch { exams = []; }
+  teacherState.examList = exams;
+
+  if (!exams.length) {
+    sel.innerHTML = `<option value="">尚無考試場次</option>`;
+    $("exam-results-container").innerHTML = `<div class="empty-state">尚無考試場次</div>`;
+    return;
+  }
+
+  const fmt = ms => {
+    if (!ms) return "—";
+    const d = new Date(ms), p = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  sel.innerHTML = exams.map(e =>
+    `<option value="${escHtml(e.examId)}">${escHtml(e.classCode)} 班 — ${fmt(e.startedAt)}${e.status === "active" ? "（進行中）" : ""}</option>`
+  ).join("");
+
+  const target = (preferId && exams.some(e => e.examId === preferId)) ? preferId : exams[0].examId;
+  sel.value = target;
+  sel.onchange = () => loadExamForSelected(sel.value);
+  loadExamForSelected(target);
+}
+
+// 載入選定場次的成績（補登/缺交/改分/匯出都對此 examId 操作）
+async function loadExamForSelected(examId) {
+  if (!examId) return;
+  const meta = (teacherState.examList || []).find(e => e.examId === examId);
+  const joined = await ExamStore.getExamJoined(examId, meta?.status).catch(() => []);
+  loadExamResults(examId, meta?.classCode || "", joined);
 }
 
 function renderExamCurrentStatus(exam) {
   const panel = $("exam-current-panel");
-  const container = $("exam-results-container");
 
   if (!exam) {
-    panel.style.display = "none";
-    container.innerHTML = "";
+    panel.style.display = "none";   // 成績表改由下方場次下拉驅動，這裡不清空
     return;
   }
 
@@ -609,8 +645,7 @@ function renderExamCurrentStatus(exam) {
     });
     $("btn-reset-student-by-id").addEventListener("click", () => resetStudentById(exam.id));
   }
-
-  loadExamResults(exam.id, exam.classCode, exam.joined || []);
+  // 成績表由場次下拉（populateExamPicker → loadExamForSelected）載入
 }
 
 async function loadExamResults(examId, classCode = "", joined = []) {
@@ -766,7 +801,7 @@ async function retakeStudent(examId, studentId) {
   try {
     await ExamStore.resetStudentFull(examId, studentId);
     showToast(`${studentId} 已重設，可重新進入考試`);
-    loadExamResults(examId);
+    loadExamForSelected(examId);
   } catch(e) {
     showToast("操作失敗：" + e.message);
   }
@@ -782,7 +817,7 @@ async function resetStudentById(examId) {
     await ExamStore.resetStudentFull(examId, id);
     showToast(`${id} 已重設，可重新進入考試`);
     $("reset-student-id").value = "";
-    loadExamResults(examId);
+    loadExamForSelected(examId);
   } catch(e) {
     errEl.textContent = "操作失敗：" + e.message;
   }
