@@ -610,19 +610,16 @@ function renderExamCurrentStatus(exam) {
     $("btn-reset-student-by-id").addEventListener("click", () => resetStudentById(exam.id));
   }
 
-  loadExamResults(exam.id);
+  loadExamResults(exam.id, exam.classCode, exam.joined || []);
 }
 
-async function loadExamResults(examId) {
+async function loadExamResults(examId, classCode = "", joined = []) {
   const container = $("exam-results-container");
   container.innerHTML = `<div class="loading-state">載入成績中...</div>`;
 
   const allResults = await ExamStore.getResults(examId);
-  if (!allResults.length) {
-    container.innerHTML = `<div class="empty-state">目前尚無學生提交成績</div>`;
-    return;
-  }
-
+  teacherState.examClassCode = classCode || "";
+  teacherState.examJoined    = joined || [];
   renderExamResultsTable(examId, allResults, "");
 }
 
@@ -633,6 +630,12 @@ function renderExamResultsTable(examId, allResults, classFilter) {
     : allResults;
 
   const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
+
+  // 缺交：已按下「加入考試」登記、但目前沒有成績者
+  const submittedIds  = new Set(allResults.map(r => r.studentId));
+  const notSubmitted  = [...new Set(teacherState.examJoined || [])]
+    .filter(id => !submittedIds.has(id)).sort();
+  const pct = v => v != null ? v + "%" : "—";
 
   container.innerHTML = `
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
@@ -646,6 +649,17 @@ function renderExamResultsTable(examId, allResults, classFilter) {
       <button class="btn-secondary btn-sm" id="btn-exam-refresh" style="margin-left:auto">重新整理</button>
       <button class="btn-secondary btn-sm" id="btn-exam-export-excel">匯出 Excel</button>
     </div>
+
+    <div class="exam-addscore-bar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:.78rem;color:var(--text-muted)">改分／補登：</span>
+      <input type="text" id="exam-add-id" placeholder="座號（五碼）" maxlength="5"
+             style="width:120px;padding:5px 10px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono)" />
+      <input type="number" id="exam-add-score" placeholder="分數 0-100" min="0" max="100"
+             style="width:110px;padding:5px 10px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono)" />
+      <button class="btn-secondary btn-sm" id="btn-exam-add">寫入</button>
+      <span style="font-size:.72rem;color:var(--text-muted)">DB 異常時可手動補救既有或未存到的成績</span>
+    </div>
+
     ${classFilter ? `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:6px">顯示 ${filtered.length} / ${allResults.length} 筆</div>` : ""}
     <div class="exam-grid lb-header">
       <span>名次</span><span>班級座號</span><span>難度</span>
@@ -654,18 +668,41 @@ function renderExamResultsTable(examId, allResults, classFilter) {
     ${filtered.map((r, idx) => `
       <div class="exam-grid lb-row">
         <span class="lb-rank">${idx + 1}</span>
-        <span class="lb-id">${escHtml(r.studentId)}</span>
+        <span class="lb-id">${escHtml(r.studentId)}${r.manualEdit ? ` <span class="badge badge-medium" title="教師手動設定">改</span>` : ""}</span>
         <span style="font-size:.78rem;color:var(--text-muted)">${diffLabel[r.difficulty] || "—"}</span>
-        <span class="lb-score">${r.score}</span>
-        <span class="lb-wpm">${r.wpm} WPM</span>
-        <span class="lb-acc">${r.accuracy}%</span>
-        <span class="lb-acc">${r.grossAccuracy != null ? r.grossAccuracy + "%" : "—"}</span>
-        <span class="lb-acc">${r.completion}%</span>
-        <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="重設全部">重設</button>
-      </div>`).join("")}`;
+        <span class="lb-score">${r.score ?? "—"}</span>
+        <span class="lb-wpm">${r.wpm != null ? r.wpm + " WPM" : "—"}</span>
+        <span class="lb-acc">${pct(r.accuracy)}</span>
+        <span class="lb-acc">${pct(r.grossAccuracy)}</span>
+        <span class="lb-acc">${pct(r.completion)}</span>
+        <span style="display:flex;gap:4px;justify-content:flex-end">
+          <button class="ta-btn-edit" data-edit="${escHtml(r.studentId)}" title="改分">改分</button>
+          <button class="ta-btn-del" data-retake="${escHtml(r.studentId)}" title="重設全部">重設</button>
+        </span>
+      </div>`).join("")}
+
+    <div class="exam-unsubmitted" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:6px">缺交（已加入考試但尚無成績）（${notSubmitted.length}）</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${notSubmitted.length ? notSubmitted.map(id => `<span class="badge badge-hard exam-missing" data-missing="${escHtml(id)}" style="cursor:pointer" title="點一下帶入補登座號">${escHtml(id)}</span>`).join("")
+          : `<span style="font-size:.8rem;color:var(--text-muted)">已加入考試的學生皆已有成績</span>`}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:6px">名單來自學生按下「加入考試」的登記；點座號可帶入下方改分／補登</div>
+    </div>`;
 
   container.querySelectorAll("[data-retake]").forEach(btn =>
     btn.addEventListener("click", () => retakeStudent(examId, btn.dataset.retake)));
+  container.querySelectorAll("[data-edit]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      const v = prompt(`輸入 ${btn.dataset.edit} 的新分數（0–100）：`);
+      if (v !== null) setExamScore(examId, btn.dataset.edit, v);
+    }));
+
+  container.querySelectorAll("[data-missing]").forEach(b =>
+    b.addEventListener("click", () => { $("exam-add-id").value = b.dataset.missing; $("exam-add-score").focus(); }));
+
+  $("btn-exam-add").addEventListener("click", () =>
+    setExamScore(examId, $("exam-add-id").value.trim(), $("exam-add-score").value));
 
   $("btn-exam-filter-apply").addEventListener("click", () =>
     renderExamResultsTable(examId, allResults, $("exam-result-class-filter").value.trim()));
@@ -675,9 +712,25 @@ function renderExamResultsTable(examId, allResults, classFilter) {
   });
   const clearBtn = $("btn-exam-filter-clear");
   if (clearBtn) clearBtn.addEventListener("click", () => renderExamResultsTable(examId, allResults, ""));
-  $("btn-exam-refresh").addEventListener("click", () => loadExamResults(examId));
+  $("btn-exam-refresh").addEventListener("click", () => loadExamResults(examId, teacherState.examClassCode, teacherState.examJoined));
   $("btn-exam-export-excel").addEventListener("click", () =>
     exportExamExcel(examId, filtered, classFilter));
+}
+
+// 教師手動改分／補登（0–100 整數，直接覆寫，不受保留最高分限制）
+async function setExamScore(examId, studentId, rawScore) {
+  const err = validateStudentId(studentId);
+  if (err) { showToast(err); return; }
+  if (String(rawScore).trim() === "") { showToast("請輸入分數"); return; }
+  const score = Number(rawScore);
+  if (!Number.isInteger(score) || score < 0 || score > 100) { showToast("分數須為 0–100 的整數"); return; }
+  try {
+    await ExamStore.overrideScore(examId, studentId, score);
+    showToast(`已將 ${studentId} 的分數設為 ${score}`);
+    loadExamResults(examId, teacherState.examClassCode, teacherState.examJoined);
+  } catch (e) {
+    showToast("寫入失敗：" + e.message);
+  }
 }
 
 function exportExamExcel(examId, results, classFilter) {

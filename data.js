@@ -11,7 +11,7 @@
 import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc,
          getDocs, addDoc, updateDoc, deleteDoc,
-         setDoc, getDoc, query, orderBy,
+         setDoc, getDoc, query, orderBy, arrayUnion,
          serverTimestamp, onSnapshot }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const _app = initializeApp(FIREBASE_CONFIG);
@@ -458,6 +458,14 @@ const ExamStore = {
     return d.id ? d : null;
   },
 
+  /** 學生按下「加入考試」時登記座號（之後若無成績即列入缺交） */
+  async recordJoin(examId, studentId) {
+    const ref  = doc(db, "settings", "activeExam");
+    const snap = await getDoc(ref);
+    if (snap.exists() && snap.data().id === examId)
+      await updateDoc(ref, { joined: arrayUnion(studentId) }).catch(() => {});
+  },
+
   /** 開始考試：傳入三篇文章 { easy, medium, hard } */
   async start(classCode, articles) {
     const id = `exam_${Date.now()}`;
@@ -491,6 +499,18 @@ const ExamStore = {
     await setDoc(ref, { ...result, examId, isExamResult: true, submittedAt: serverTimestamp() });
   },
 
+  /** 教師手動改分／補登：直接覆寫分數（不受保留最高分限制；DB 異常時補救用） */
+  async overrideScore(examId, studentId, score, extra = {}) {
+    const ref  = doc(db, "leaderboard", `exam_${examId}__${studentId}`);
+    const snap = await getDoc(ref);
+    const prev = snap.exists() ? snap.data() : {};
+    await setDoc(ref, {
+      ...prev, examId, studentId, classCode: studentId.slice(0, 3),
+      isExamResult: true, reset: false, score,
+      manualEdit: true, editedAt: serverTimestamp(), ...extra,
+    });
+  },
+
   /** 教師重設學生：以 reset 標記覆蓋成績 */
   async resetStudentFull(examId, studentId) {
     await setDoc(doc(db, "leaderboard", `exam_${examId}__${studentId}`), {
@@ -521,6 +541,7 @@ const ExamStore = {
       startedAt:    exam.startedAt,
       endedAt:      serverTimestamp(),
       studentCount: results.length,
+      joined:       exam.joined || [],
       results,
     });
   },
