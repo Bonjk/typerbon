@@ -59,6 +59,11 @@
     <div class="exam-modal">
       <h2>選擇考試難度</h2>
       <div id="exam-article-choices" class="exam-article-choices"></div>
+      <div class="exam-score-preview-wrap">
+        <div class="exam-score-preview-label">分數分布參考（淨正確率 / 完成度 100% 時）
+          <a href="score-guide.html" target="_blank" rel="noopener">放大查看</a></div>
+        <iframe src="score-guide.html" class="exam-score-preview" title="分數分布" loading="lazy"></iframe>
+      </div>
       <button class="exam-modal-cancel" id="btn-exam-article-cancel">取消</button>
     </div>
   </div>
@@ -76,11 +81,6 @@
         <li>有任何突發情況舉手反映。</li>
         <li>為了確定你有看到這裡，請點選<strong id="exam-rule-color">「確認」</strong>。</li>
       </ol>
-      <div class="exam-score-preview-wrap">
-        <div class="exam-score-preview-label">分數分布參考（淨正確率 / 完成度 100% 時）
-          <a href="score-guide.html" target="_blank" rel="noopener">放大查看</a></div>
-        <iframe src="score-guide.html" class="exam-score-preview" title="分數分布" loading="lazy"></iframe>
-      </div>
       <label class="exam-rules-check-row">
         <input type="checkbox" id="exam-rules-check" />
         我已閱讀並了解以上規則
