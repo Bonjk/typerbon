@@ -48,10 +48,24 @@ async function submitWithRetry(examId, sid, result, attempts = 3) {
   }
   return false;
 }
+let _flushing = false;
 async function flushPendingExamResults() {
-  for (const v of Object.values(readPending()))
-    if (await submitWithRetry(v.examId, v.studentId, v.result, 2)) clearPending(v.examId, v.studentId);
+  if (_flushing) return;                                 // 防重入
+  if (!Object.keys(readPending()).length) return;        // 沒有待補傳就略過
+  _flushing = true;
+  try {
+    for (const v of Object.values(readPending()))
+      if (await submitWithRetry(v.examId, v.studentId, v.result, 2)) {
+        clearPending(v.examId, v.studentId);
+        showToast("離線暫存的考試成績已補傳成功");
+      }
+  } finally { _flushing = false; }
 }
+// 定期＋事件自動重送：考完視窗縮小後背景計時器會被節流，故再用 online/可見/focus 補強
+setInterval(flushPendingExamResults, 30000);
+window.addEventListener("online", flushPendingExamResults);
+window.addEventListener("focus", flushPendingExamResults);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) flushPendingExamResults(); });
 
 // ── INIT ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -655,6 +669,7 @@ async function checkActiveExam() {
 function joinExam() {
   const exam = state.pendingExam;
   if (!exam || !exam.articles) return;
+  ExamStore.recordJoin(exam.id, state.studentId);   // 按下加入考試即登記座號（best-effort）
   state.examArticles = exam.articles;
   showExamArticleModal(exam.articles);
 }

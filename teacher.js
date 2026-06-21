@@ -610,19 +610,16 @@ function renderExamCurrentStatus(exam) {
     $("btn-reset-student-by-id").addEventListener("click", () => resetStudentById(exam.id));
   }
 
-  loadExamResults(exam.id, exam.classCode);
+  loadExamResults(exam.id, exam.classCode, exam.joined || []);
 }
 
-async function loadExamResults(examId, classCode = "") {
+async function loadExamResults(examId, classCode = "", joined = []) {
   const container = $("exam-results-container");
   container.innerHTML = `<div class="loading-state">載入成績中...</div>`;
 
-  const [allResults, rosterIds] = await Promise.all([
-    ExamStore.getResults(examId),
-    RecordStore.getAllStudentIds().catch(() => []),
-  ]);
+  const allResults = await ExamStore.getResults(examId);
   teacherState.examClassCode = classCode || "";
-  teacherState.examRoster    = rosterIds;
+  teacherState.examJoined    = joined || [];
   renderExamResultsTable(examId, allResults, "");
 }
 
@@ -634,11 +631,10 @@ function renderExamResultsTable(examId, allResults, classFilter) {
 
   const diffLabel = { easy: "初級", medium: "中級", hard: "高級" };
 
-  // 未交卷：以練習排行榜推估的該班名冊，扣掉已交者
-  const cc            = teacherState.examClassCode || "";
+  // 缺交：已按下「加入考試」登記、但目前沒有成績者
   const submittedIds  = new Set(allResults.map(r => r.studentId));
-  const roster        = (teacherState.examRoster || []).filter(id => !cc || id.startsWith(cc));
-  const notSubmitted  = roster.filter(id => !submittedIds.has(id)).sort();
+  const notSubmitted  = [...new Set(teacherState.examJoined || [])]
+    .filter(id => !submittedIds.has(id)).sort();
   const pct = v => v != null ? v + "%" : "—";
 
   container.innerHTML = `
@@ -686,12 +682,12 @@ function renderExamResultsTable(examId, allResults, classFilter) {
       </div>`).join("")}
 
     <div class="exam-unsubmitted" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-size:.82rem;font-weight:700;margin-bottom:6px">未交卷（${notSubmitted.length}）</div>
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:6px">缺交（已加入考試但尚無成績）（${notSubmitted.length}）</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${notSubmitted.length ? notSubmitted.map(id => `<span class="badge badge-hard">${escHtml(id)}</span>`).join("")
-          : `<span style="font-size:.8rem;color:var(--text-muted)">名冊內學生皆已交卷</span>`}
+        ${notSubmitted.length ? notSubmitted.map(id => `<span class="badge badge-hard exam-missing" data-missing="${escHtml(id)}" style="cursor:pointer" title="點一下帶入補登座號">${escHtml(id)}</span>`).join("")
+          : `<span style="font-size:.8rem;color:var(--text-muted)">已加入考試的學生皆已有成績</span>`}
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:6px">依練習紀錄推估該班名冊，從未練習過的學生不在此列</div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:6px">名單來自學生按下「加入考試」的登記；點座號可帶入下方改分／補登</div>
     </div>`;
 
   container.querySelectorAll("[data-retake]").forEach(btn =>
@@ -701,6 +697,9 @@ function renderExamResultsTable(examId, allResults, classFilter) {
       const v = prompt(`輸入 ${btn.dataset.edit} 的新分數（0–100）：`);
       if (v !== null) setExamScore(examId, btn.dataset.edit, v);
     }));
+
+  container.querySelectorAll("[data-missing]").forEach(b =>
+    b.addEventListener("click", () => { $("exam-add-id").value = b.dataset.missing; $("exam-add-score").focus(); }));
 
   $("btn-exam-add").addEventListener("click", () =>
     setExamScore(examId, $("exam-add-id").value.trim(), $("exam-add-score").value));
@@ -713,7 +712,7 @@ function renderExamResultsTable(examId, allResults, classFilter) {
   });
   const clearBtn = $("btn-exam-filter-clear");
   if (clearBtn) clearBtn.addEventListener("click", () => renderExamResultsTable(examId, allResults, ""));
-  $("btn-exam-refresh").addEventListener("click", () => loadExamResults(examId, teacherState.examClassCode));
+  $("btn-exam-refresh").addEventListener("click", () => loadExamResults(examId, teacherState.examClassCode, teacherState.examJoined));
   $("btn-exam-export-excel").addEventListener("click", () =>
     exportExamExcel(examId, filtered, classFilter));
 }
@@ -728,7 +727,7 @@ async function setExamScore(examId, studentId, rawScore) {
   try {
     await ExamStore.overrideScore(examId, studentId, score);
     showToast(`已將 ${studentId} 的分數設為 ${score}`);
-    loadExamResults(examId, teacherState.examClassCode);
+    loadExamResults(examId, teacherState.examClassCode, teacherState.examJoined);
   } catch (e) {
     showToast("寫入失敗：" + e.message);
   }
