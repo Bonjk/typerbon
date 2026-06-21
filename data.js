@@ -491,6 +491,18 @@ const ExamStore = {
     await setDoc(ref, { ...result, examId, isExamResult: true, submittedAt: serverTimestamp() });
   },
 
+  /** 教師手動改分／補登：直接覆寫分數（不受保留最高分限制；DB 異常時補救用） */
+  async overrideScore(examId, studentId, score, extra = {}) {
+    const ref  = doc(db, "leaderboard", `exam_${examId}__${studentId}`);
+    const snap = await getDoc(ref);
+    const prev = snap.exists() ? snap.data() : {};
+    await setDoc(ref, {
+      ...prev, examId, studentId, classCode: studentId.slice(0, 3),
+      isExamResult: true, reset: false, score,
+      manualEdit: true, editedAt: serverTimestamp(), ...extra,
+    });
+  },
+
   /** 教師重設學生：以 reset 標記覆蓋成績 */
   async resetStudentFull(examId, studentId) {
     await setDoc(doc(db, "leaderboard", `exam_${examId}__${studentId}`), {
