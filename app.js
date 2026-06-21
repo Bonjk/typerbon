@@ -1220,7 +1220,7 @@ async function checkAchievements(session, allSessions, isExam) {
     if (session.accuracy === 100 && state.noBackspace) await award("no_backspace");
     if (score % 100 === 67)                             await award("sixseven");
     const wc = countWords(state.currentArticle?.content || "");
-    if (completed && wc >= 120) await award("long_article");
+    if (completed && wc >= 110) await award("long_article");
     // 完成彩蛋（純長度 completion + 毛正確率，不走 completed）
     if (session.completion === 100 && session.elapsed >= 1200) await award("persevere");
     if (session.completion === 100 && session.grossAccuracy === 0) await award("you_sure");
