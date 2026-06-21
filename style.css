@@ -999,7 +999,7 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 /* Exam results grid — rank id diff score wpm netAcc grossAcc completion action */
 .exam-grid {
   display: grid;
-  grid-template-columns: 44px 100px 48px 68px 84px 62px 62px 62px 46px;
+  grid-template-columns: 44px 100px 48px 68px 84px 62px 62px 62px 104px;
   gap: 8px;
   padding: 8px 14px;
   align-items: center;
@@ -1271,11 +1271,12 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
 .btn-exam-confirm:not(:disabled):hover { opacity: .85; transform: scale(.97); }
 .btn-exam-confirm:not(:disabled):active { transform: scale(.94); }
 
-.btn-confirm-red    { background: #f25f5c; color: #fff; border-color: #f25f5c; }
-.btn-confirm-orange { background: #f5a442; color: #111; border-color: #f5a442; }
-.btn-confirm-purple { background: #cc5de8; color: #fff; border-color: #cc5de8; }
-.btn-confirm-green  { background: #3ecf8e; color: #111; border-color: #3ecf8e; }
-.btn-confirm-blue   { background: #5b9cf6; color: #fff; border-color: #5b9cf6; }
+/* 五個確認按鈕統一使用主題色（驗證以文字比對，顏色僅裝飾） */
+.btn-confirm-red,
+.btn-confirm-orange,
+.btn-confirm-purple,
+.btn-confirm-green,
+.btn-confirm-blue   { background: var(--accent); color: #0e0f11; border-color: var(--accent); }
 
 .exam-modal-cancel {
   width: 100%;
