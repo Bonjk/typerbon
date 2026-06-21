@@ -48,24 +48,46 @@ async function submitWithRetry(examId, sid, result, attempts = 3) {
   }
   return false;
 }
+// 考試結果卡上的上傳狀態提示（避免學生在非同步寫入完成前離開導致掉分）
+function setExamUploadStatus(kind) {
+  const el = document.getElementById("exam-upload-status");
+  if (!el) return;
+  if (!kind) { el.style.display = "none"; return; }
+  const map = {
+    uploading: ["uploading", "成績上傳中，請稍候，先別關閉頁面…"],
+    done:      ["done",      "✓ 成績已上傳成功，可以安心離開"],
+    pending:   ["pending",   "⚠ 成績尚未上傳，請保持此頁開啟，系統會自動重試（或舉手反映）"],
+  };
+  const [cls, text] = map[kind] || ["", ""];
+  el.className = "exam-upload-status " + cls;
+  el.textContent = text;
+  el.style.display = "";
+}
+
 let _flushing = false;
 async function flushPendingExamResults() {
   if (_flushing) return;                                 // 防重入
   if (!Object.keys(readPending()).length) return;        // 沒有待補傳就略過
   _flushing = true;
   try {
+    let any = false;
     for (const v of Object.values(readPending()))
       if (await submitWithRetry(v.examId, v.studentId, v.result, 2)) {
         clearPending(v.examId, v.studentId);
-        showToast("離線暫存的考試成績已補傳成功");
+        any = true;
       }
+    if (any && !Object.keys(readPending()).length) setExamUploadStatus("done");
   } finally { _flushing = false; }
 }
 // 定期＋事件自動重送：考完視窗縮小後背景計時器會被節流，故再用 online/可見/focus 補強
-setInterval(flushPendingExamResults, 30000);
+setInterval(flushPendingExamResults, 15000);
 window.addEventListener("online", flushPendingExamResults);
 window.addEventListener("focus", flushPendingExamResults);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) flushPendingExamResults(); });
+// 還有未上傳的考試成績時，離開前警告（防止寫入完成前關閉分頁而掉分）
+window.addEventListener("beforeunload", e => {
+  if (Object.keys(readPending()).length) { e.preventDefault(); e.returnValue = ""; return ""; }
+});
 
 // ── INIT ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -493,6 +515,7 @@ async function finishSession(typed) {
 }
 
 function showResults(session) {
+  setExamUploadStatus(null);   // 練習結果不顯示考試上傳狀態
   $("typing-area").style.display          = "none";
   $("btn-refresh-ref").style.display      = "none";
   $("btn-submit-practice").style.display  = "none";
@@ -870,9 +893,10 @@ async function submitExam(typed, isFinal = false) {
 
   if (examIdToSave) {
     savePending(examIdToSave, state.studentId, result);   // 先存本機，確保不掉分
+    setExamUploadStatus("uploading");
     const ok = await submitWithRetry(examIdToSave, state.studentId, result);
-    if (ok) clearPending(examIdToSave, state.studentId);
-    else showToast("成績已暫存於本機，連線恢復後會自動補傳");
+    if (ok) { clearPending(examIdToSave, state.studentId); setExamUploadStatus("done"); }
+    else setExamUploadStatus("pending");
   }
 
   // 成就檢查（考試模式）
