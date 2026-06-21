@@ -1242,6 +1242,18 @@ body[data-font-size="xl"] .typing-input { font-size: 23px; }
   min-width: 18px;
 }
 
+.exam-score-preview-wrap { margin: 16px 0 4px; }
+.exam-score-preview-label {
+  font-size: .76rem; color: var(--text-muted); margin-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.exam-score-preview-label a { color: var(--accent); font-size: .74rem; }
+.exam-score-preview {
+  width: 100%; height: 240px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff;
+}
+
 .exam-rules-check-row {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 20px;
