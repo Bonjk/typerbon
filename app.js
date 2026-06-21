@@ -36,10 +36,28 @@ const state = {
 
 const $ = id => document.getElementById(id);
 
+// ── 考試成績暫存／重試（避免交卷時 Firestore 瞬斷掉分）──────────
+const PENDING_KEY = "typerbon_pending_exam";
+const readPending  = () => { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "{}"); } catch { return {}; } };
+const savePending  = (examId, sid, result) => { const a = readPending(); a[`${examId}__${sid}`] = { examId, studentId: sid, result }; localStorage.setItem(PENDING_KEY, JSON.stringify(a)); };
+const clearPending = (examId, sid) => { const a = readPending(); delete a[`${examId}__${sid}`]; localStorage.setItem(PENDING_KEY, JSON.stringify(a)); };
+async function submitWithRetry(examId, sid, result, attempts = 3) {
+  for (let i = 0; i < attempts; i++) {
+    try { await ExamStore.submitResult(examId, sid, result); return true; }
+    catch { await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+  }
+  return false;
+}
+async function flushPendingExamResults() {
+  for (const v of Object.values(readPending()))
+    if (await submitWithRetry(v.examId, v.studentId, v.result, 2)) clearPending(v.examId, v.studentId);
+}
+
 // ── INIT ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   // 確保預設文章存在
   await ArticleStore.ensureDefaults();
+  flushPendingExamResults();   // best-effort 補傳上次未成功的考試成績
 
   const savedId = sessionStorage.getItem("typerbon_student");
   if (savedId) loginAs(savedId);
@@ -143,6 +161,7 @@ function loginAs(id) {
   });
   renderArticleList();
   checkActiveExam();
+  flushPendingExamResults();   // 登入後再嘗試補傳一次
 }
 
 function handleLogout() {
@@ -834,10 +853,11 @@ async function submitExam(typed, isFinal = false) {
     state.pendingExam  = null;
   }
 
-  try {
-    if (examIdToSave) await ExamStore.submitResult(examIdToSave, state.studentId, result);
-  } catch {
-    showToast("成績儲存失敗，請檢查網路連線");
+  if (examIdToSave) {
+    savePending(examIdToSave, state.studentId, result);   // 先存本機，確保不掉分
+    const ok = await submitWithRetry(examIdToSave, state.studentId, result);
+    if (ok) clearPending(examIdToSave, state.studentId);
+    else showToast("成績已暫存於本機，連線恢復後會自動補傳");
   }
 
   // 成就檢查（考試模式）
