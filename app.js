@@ -412,7 +412,7 @@ async function finishSession(typed) {
     difficulty:   state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc, score,
     completionFactor, wordCount,
-    completed: typed.length >= target.length && acc >= 50,
+    completed: typed.length >= target.length && acc >= 80,
     completion: Math.round(typed.length / target.length * 100),
     keystrokes: state.grossKeystrokes,
     elapsed: Math.round(elapsed),
@@ -782,7 +782,7 @@ async function submitExam(typed, isFinal = false) {
     difficulty: state.currentArticle.difficulty || "medium",
     wpm, accuracy: acc, grossAccuracy: grossAcc,
     completion, score, elapsed: Math.round(elapsed),
-    completed: completion === 100 && acc >= 50,
+    completed: completion === 100 && acc >= 80,
     articleTitle: state.currentArticle.title,
     letterStats: { ...state.letterStats },
   };
