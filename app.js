@@ -195,6 +195,7 @@ function loginAs(id) {
     if (profile.fontSize) applyFontSize(profile.fontSize, false);
     state.studentProfile = profile;
   });
+  StudentStore.recordLogin(id);   // 記錄登入時間（教師端登入紀錄用）
   renderArticleList();
   checkActiveExam();
   flushPendingExamResults();   // 登入後再嘗試補傳一次

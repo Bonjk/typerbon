@@ -2,7 +2,8 @@
  * teacher.js — 教師後台邏輯（Firebase 版）
  */
 import { ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore, ACHIEVEMENTS,
-         countWords, formatDate, validateStudentId, showToast, escHtml } from "./data.js";
+         countWords, formatDate, validateStudentId, deriveEarnedAchievements,
+         showToast, escHtml } from "./data.js";
 
 const teacherState = { editingId: null, leaderboardCache: null, examArticles: null, achStudentId: null };
 const $ = id => document.getElementById(id);
@@ -68,13 +69,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("ach-student-id").addEventListener("keydown", e => { if (e.key === "Enter") queryStudentAchievements(); });
   $("btn-ach-all").addEventListener("click", () => bulkSetAchievements(ACHIEVEMENTS.map(a => a.id)));
   $("btn-ach-clear").addEventListener("click", () => bulkSetAchievements([]));
+  $("btn-ach-rebuild").addEventListener("click", rebuildAchievementsForQueried);
+  $("btn-ach-check-all").addEventListener("click", previewRebuildAll);
+  $("btn-ach-rebuild-all").addEventListener("click", rebuildAllAchievements);
+
+  $("btn-login-query").addEventListener("click", () => loadLoginLog($("login-class-filter").value.trim()));
+  $("login-class-filter").addEventListener("keydown", e => { if (e.key === "Enter") loadLoginLog($("login-class-filter").value.trim()); });
 });
 
 // ── TAB SWITCHING ──────────────────────────────────────────
 function switchTeacherTab(name) {
   document.querySelectorAll("[data-teacher-tab]").forEach(t =>
     t.classList.toggle("active", t.dataset.teacherTab === name));
-  ["articles", "records", "leaderboard", "settings", "exam", "achievements"].forEach(t => {
+  ["articles", "records", "leaderboard", "settings", "exam", "achievements", "logins"].forEach(t => {
     const el = document.getElementById(`teacher-tab-${t}`);
     if (el) el.classList.toggle("active", t === name);
   });
@@ -384,15 +391,31 @@ async function queryStudentAchievements() {
   resultEl.innerHTML = `<div class="loading-state">查詢中...</div>`;
   const profile = await StudentStore.get(id);
   teacherState.achStudentId = id;
-  renderAchManage(id, new Set(profile.achievements || []));
+  const earned  = new Set(profile.achievements || []);
+  const derived = await deriveEarnedForStudent(id).catch(() => new Set());
+  const missing = [...derived].filter(x => !earned.has(x));
+  renderAchManage(id, earned, missing);
 }
 
-function renderAchManage(id, earned) {
+// 讀取某生紀錄並推導應得成就（純讀取）
+async function deriveEarnedForStudent(id) {
+  const [sessions, examResults] = await Promise.all([
+    RecordStore.getByStudent(id).catch(() => []),
+    ExamStore.getStudentExamResults(id).catch(() => []),
+  ]);
+  return deriveEarnedAchievements(sessions, examResults);
+}
+
+function renderAchManage(id, earned, missing = []) {
   const resultEl = $("ach-manage-result");
   const byCat = {};
   ACHIEVEMENTS.forEach(a => { (byCat[a.category] ??= []).push(a); });
 
   let html = `<div class="sr-header">班級座號：${escHtml(id)} — 已獲得 ${earned.size} / ${ACHIEVEMENTS.length}</div>`;
+  if (missing.length) {
+    const names = missing.map(mid => (ACHIEVEMENTS.find(a => a.id === mid) || {}).name || mid).join("、");
+    html += `<div class="input-error" style="margin:4px 0 8px">依紀錄應有但目前缺少（${missing.length}）：${escHtml(names)}</div>`;
+  }
   for (const [cat, list] of Object.entries(byCat)) {
     html += `<div class="ach-category-label">${ACH_CAT_LABEL[cat] || cat}</div><div class="tag-check-group">`;
     for (const a of list) {
@@ -423,6 +446,123 @@ async function bulkSetAchievements(ids) {
   await StudentStore.setAchievements(id, ids);
   renderAchManage(id, new Set(ids));
   showToast(ids.length ? "已全部授予" : "已全部清除");
+}
+
+// 依某學生的練習/考試紀錄推導應得成就，用 arrayUnion 補回（只加不減）
+async function rebuildOneStudent(id) {
+  const earned = await deriveEarnedForStudent(id);
+  await StudentStore.addAchievements(id, [...earned]);
+  return earned.size;
+}
+
+// 檢查全部（不修改）：列出每位學生「依紀錄應有但目前缺少」的成就
+async function previewRebuildAll() {
+  const el = $("ach-manage-result");
+  const btn = $("btn-ach-check-all");
+  btn.disabled = true;
+  el.innerHTML = `<div class="loading-state">檢查中…（掃描所有學生紀錄，請稍候）</div>`;
+  try {
+    const profiles = await StudentStore.getAllProfiles();
+    const rows = [];
+    let i = 0;
+    for (const p of profiles) {
+      const current = new Set(p.achievements || []);
+      const derived = await deriveEarnedForStudent(p.studentId).catch(() => new Set());
+      const missing = [...derived].filter(x => !current.has(x));
+      if (missing.length) rows.push({ id: p.studentId, missing });
+      btn.textContent = `檢查中… ${++i}/${profiles.length}`;
+    }
+    rows.sort((a, b) => a.id.localeCompare(b.id));
+    const nameOf = mid => (ACHIEVEMENTS.find(a => a.id === mid) || {}).name || mid;
+    const totalMissing = rows.reduce((n, r) => n + r.missing.length, 0);
+    el.innerHTML = `
+      <div class="sr-header">檢查結果（不修改）— ${rows.length} 位學生缺少成就，共 ${totalMissing} 項</div>
+      ${rows.length ? rows.map(r => `
+        <div class="history-row" style="align-items:flex-start">
+          <span class="hr-title" style="min-width:70px;font-family:var(--font-mono)">${escHtml(r.id)}</span>
+          <span class="hr-title" style="flex:1">缺少 ${r.missing.length}：${escHtml(r.missing.map(nameOf).join("、"))}</span>
+        </div>`).join("")
+        : `<div class="empty-state">沒有偵測到被清空的成就（所有學生的成就與紀錄一致）</div>`}
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">此為預覽，未寫入。確認後可按「重建全部學生成就」套用。theme_all / no_backspace 等無法從紀錄推得者不在此列。</div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="input-error">檢查失敗：${escHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "檢查全部（不修改）";
+  }
+}
+
+async function rebuildAchievementsForQueried() {
+  const id = teacherState.achStudentId;
+  if (!id) { showToast("請先查詢學生"); return; }
+  showToast("重建中…");
+  try {
+    const n = await rebuildOneStudent(id);
+    const profile = await StudentStore.get(id);
+    renderAchManage(id, new Set(profile.achievements || []));
+    showToast(`已依紀錄補回，推得 ${n} 個成就（現有成就未移除）`);
+  } catch (e) { showToast("重建失敗：" + e.message); }
+}
+
+async function rebuildAllAchievements() {
+  if (!confirm("將依練習/考試紀錄，為所有學生補回應得成就（只加不減）。確定執行？")) return;
+  const btn = $("btn-ach-rebuild-all");
+  btn.disabled = true;
+  try {
+    const ids = await RecordStore.getAllStudentIds();
+    let done = 0;
+    for (const sid of ids) {
+      try { await rebuildOneStudent(sid); } catch {}
+      done++;
+      btn.textContent = `重建中… ${done}/${ids.length}`;
+    }
+    showToast(`已重建 ${done} 位學生的成就`);
+  } catch (e) {
+    showToast("重建失敗：" + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "重建全部學生成就";
+  }
+}
+
+// ── 登入 / 活動紀錄 ─────────────────────────────────────────
+async function loadLoginLog(classFilter) {
+  const el = $("login-log-result");
+  const btn = $("btn-login-query");
+  btn.disabled = true;
+  el.innerHTML = `<div class="loading-state">載入中…（掃描練習紀錄，請稍候）</div>`;
+  try {
+    let profiles = await StudentStore.getAllProfiles();
+    if (classFilter) profiles = profiles.filter(p => (p.studentId || "").startsWith(classFilter));
+    const rows = [];
+    let i = 0;
+    for (const p of profiles) {
+      const loginMs = p.lastLogin?.toMillis?.() ?? null;
+      const sessions = await RecordStore.getByStudent(p.studentId).catch(() => []);
+      const practiceMs = sessions.length ? sessions[0].ts : null;   // getByStudent 已由新到舊排序
+      rows.push({ id: p.studentId, loginMs, practiceMs, recent: Math.max(loginMs || 0, practiceMs || 0) });
+      btn.textContent = `載入中… ${++i}/${profiles.length}`;
+    }
+    rows.sort((a, b) => (b.recent || 0) - (a.recent || 0));
+    const fmt = ms => ms ? formatDate(ms) : "—";
+    el.innerHTML = `
+      <div class="sr-header">登入 / 活動紀錄 — 共 ${rows.length} 位（依最近時間排序）</div>
+      <div style="display:flex;gap:12px;padding:6px 4px;font-size:.72rem;color:var(--text-muted);font-weight:700">
+        <span style="min-width:80px">班級座號</span><span style="flex:1">最後登入</span><span style="flex:1">最近練習</span>
+      </div>
+      ${rows.length ? rows.map(r => `
+        <div style="display:flex;gap:12px;padding:6px 4px;border-top:1px solid var(--border);font-size:.85rem">
+          <span style="min-width:80px;font-family:var(--font-mono)">${escHtml(r.id)}</span>
+          <span style="flex:1;color:var(--text-muted)">${fmt(r.loginMs)}</span>
+          <span style="flex:1;color:var(--text-muted)">${fmt(r.practiceMs)}</span>
+        </div>`).join("")
+        : `<div class="empty-state">沒有學生資料</div>`}`;
+  } catch (e) {
+    el.innerHTML = `<div class="input-error">載入失敗：${escHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "查詢";
+  }
 }
 
 async function exportAllCSV() {

@@ -53,6 +53,7 @@
     <button class="tab" data-teacher-tab="settings">設定</button>
     <button class="tab" data-teacher-tab="exam">考試管理</button>
     <button class="tab" data-teacher-tab="achievements">成就管理</button>
+    <button class="tab" data-teacher-tab="logins">登入紀錄</button>
   </div>
 
   <!-- ── TAB: 文章管理 ── -->
@@ -278,10 +279,34 @@
           <input type="text" id="ach-student-id" placeholder="五碼，如 80213" maxlength="5" />
         </div>
         <button class="btn-primary btn-sm" id="btn-query-ach">查詢</button>
+        <button class="btn-secondary btn-sm" id="btn-ach-rebuild">從紀錄重建</button>
         <button class="btn-secondary btn-sm" id="btn-ach-all">一鍵全給</button>
         <button class="btn-secondary btn-sm" id="btn-ach-clear">全部清除</button>
       </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn-secondary btn-sm" id="btn-ach-check-all">檢查全部（不修改）</button>
+        <button class="btn-secondary btn-sm" id="btn-ach-rebuild-all">重建全部學生成就</button>
+        <span style="font-size:.72rem;color:var(--text-muted)">依練習/考試紀錄補回成就（只加不減）；主題探索家等少數項無法自動重建</span>
+      </div>
       <div id="ach-manage-result" class="student-records-result"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: 登入紀錄 ── -->
+  <div id="teacher-tab-logins" class="tab-content">
+    <div class="section-card">
+      <div class="panel-header">
+        <h2 class="section-title">登入 / 活動紀錄</h2>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-group" style="min-width:160px">
+          <label>班級篩選（三碼，留空=全部）</label>
+          <input type="text" id="login-class-filter" placeholder="如 802" maxlength="3" />
+        </div>
+        <button class="btn-primary btn-sm" id="btn-login-query">查詢</button>
+        <span style="font-size:.72rem;color:var(--text-muted)">最後登入為部署後累積；最近練習由紀錄推估（掃描較重，建議一班一班看）</span>
+      </div>
+      <div id="login-log-result" class="student-records-result"></div>
     </div>
   </div>
 
