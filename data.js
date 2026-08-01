@@ -11,7 +11,7 @@
 import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc,
          getDocs, addDoc, updateDoc, deleteDoc,
-         setDoc, getDoc, query, orderBy, arrayUnion,
+         setDoc, getDoc, query, orderBy, arrayUnion, arrayRemove,
          serverTimestamp, onSnapshot }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const _app = initializeApp(FIREBASE_CONFIG);
@@ -421,6 +421,76 @@ function formatDate(ts) {
   return d.toLocaleDateString("zh-TW") + " " + d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
 }
 
+// 從練習/考試紀錄推導「應得成就」的 id 集合（教師重建用；鏡射 app.js checkAchievements 門檻）。
+// 無法從紀錄推得者不含：theme_all、no_backspace、world_wrong、exam_early。
+function deriveEarnedAchievements(sessions, examResults) {
+  const earned = new Set();
+  const S  = (sessions || []).slice().sort((a, b) => (a.ts || 0) - (b.ts || 0)); // 由舊到新
+  const CS = S.filter(s => s.completed !== false);   // 舊紀錄無此欄位 → 視為完成
+
+  if (S.length) earned.add("first_session");
+
+  for (const s of CS) {
+    const w = s.wpm || 0;
+    if (w >= 10) earned.add("speed_10");
+    if (w >= 15) earned.add("speed_15");
+    if (w >= 20) earned.add("speed_20");
+    if (w >= 25) earned.add("speed_25");
+    if (w >= 30) earned.add("speed_30");
+    if (s.difficulty === "hard" && s.accuracy === 100) earned.add("hard_perfect");
+    if ((s.wordCount || 0) >= 110) earned.add("long_article");
+    if (s.completion === 100 && (s.elapsed || 0) >= 1200) earned.add("persevere");
+    if (s.completion === 100 && s.grossAccuracy === 0)    earned.add("you_sure");
+  }
+  for (const s of S) if (s.accuracy === 100) earned.add("accuracy_100");
+
+  // 連續 5 次淨正確率 ≥ 95（任一段連續視窗）
+  const accs = S.map(s => s.accuracy ?? 0);
+  for (let i = 0; i + 5 <= accs.length; i++)
+    if (accs.slice(i, i + 5).every(a => a >= 95)) { earned.add("accuracy_streak"); break; }
+
+  const total = CS.length;
+  if (total >= 5)   earned.add("sessions_5");
+  if (total >= 20)  earned.add("sessions_20");
+  if (total >= 50)  earned.add("sessions_50");
+  if (total >= 100) earned.add("sessions_100");
+  const days = new Set(CS.map(s => new Date(s.ts).toDateString()));
+  if (days.size >= 5)  earned.add("days_5");
+  if (days.size >= 10) earned.add("days_10");
+  if (CS.reduce((n, s) => n + (s.wordCount || 0), 0) >= 5000) earned.add("words_5000");
+
+  // wpm_record：時序上曾有一次超越先前最佳
+  let best = -1;
+  for (const s of CS) { const w = s.wpm || 0; if (best >= 0 && w > best) { earned.add("wpm_record"); break; } if (w > best) best = w; }
+
+  // 好笑數字彩蛋（任一練習分數命中）
+  for (const s of S) {
+    const sc = s.score || 0;
+    if (sc > 0 && sc % 1000 === 0) earned.add("score_round");
+    if (sc % 1000 === 520)         earned.add("score_520");
+    if (sc % 10000 === 1314)       earned.add("score_1314");
+    if (sc % 100 === 67)           earned.add("sixseven");
+    const ss = String(sc);
+    if (ss.length >= 3 && ss === [...ss].reverse().join("")) earned.add("score_palindrome");
+  }
+
+  // 考試
+  const E = (examResults || []).filter(r => r && !r.reset);
+  if (E.length) earned.add("exam_first");
+  for (const r of E) {
+    const sc = r.score || 0;
+    if (sc >= 85)  earned.add("exam_excellent");
+    if (sc >= 100) earned.add("exam_perfect");
+    if (r.difficulty === "hard" && r.completed) earned.add("exam_hard");
+    if (r.completed && (r.wpm || 0) >= 20)      earned.add("exam_speed");
+    if (sc % 100 === 67) earned.add("sixseven");
+    const rg = Math.round(r.grossAccuracy ?? 0), rn = Math.round(r.accuracy ?? 0),
+          rc = Math.round(r.completion ?? 0),    rs = Math.round(sc);
+    if (rg === rn && rn === rc && rc === rs) earned.add("perfect_match");
+  }
+  return earned;
+}
+
 function validateStudentId(id) {
   if (!/^\d{5}$/.test(id)) return "請輸入五碼數字";
   const cls    = parseInt(id.slice(0, 3), 10);
@@ -580,6 +650,13 @@ const ExamStore = {
     return rec.exists() ? (rec.data().joined || []) : [];
   },
 
+  /** 取某學生所有考試成績（跨場次，排除 reset；供成就重建用） */
+  async getStudentExamResults(studentId) {
+    const snap = await getDocs(collection(db, "leaderboard"));
+    return snap.docs.map(d => d.data())
+      .filter(d => d.isExamResult && d.studentId === studentId && !d.reset);
+  },
+
   /** 一次讀全 leaderboard，依 examId 分組即時成績（給教師端記錄即時顯示用） */
   async getAllExamResultsByExam() {
     const snap = await getDocs(collection(db, "leaderboard"));
@@ -669,32 +746,48 @@ const StudentStore = {
     } catch { /* 離線時略過 */ }
   },
 
+  // 寫入後讀回權威陣列，更新快取與排行榜成就數
+  async _syncAfterWrite(studentId, profile) {
+    let arr = [];
+    try {
+      const fresh = await getDoc(doc(db, "students", studentId));
+      arr = fresh.exists() ? (fresh.data().achievements || []) : [];
+    } catch { arr = (this._cache[studentId] || profile || {}).achievements || []; }
+    this._cache[studentId] = { ...(this._cache[studentId] || profile || {}), achievements: arr };
+    await updateDoc(doc(db, "leaderboard", studentId), { achievementCount: arr.length }).catch(() => {});
+    return arr;
+  },
+
   async awardAchievement(studentId, achievementId) {
     const profile = await this.get(studentId);
     if ((profile.achievements || []).includes(achievementId)) return false;
-    const updated = [...(profile.achievements || []), achievementId];
-    this._cache[studentId] = { ...profile, achievements: updated };
     try {
+      // arrayUnion 原子加入單一元素：即使本機副本過時/為空也不會覆蓋掉其他成就
       await setDoc(doc(db, "students", studentId),
-        { studentId, achievements: updated, updatedAt: serverTimestamp() }, { merge: true });
-      // 同步成就數至排行榜（供排行榜顯示用）
-      await updateDoc(doc(db, "leaderboard", studentId), { achievementCount: updated.length })
-        .catch(() => {});
+        { studentId, achievements: arrayUnion(achievementId), updatedAt: serverTimestamp() }, { merge: true });
+      await this._syncAfterWrite(studentId, profile);
     } catch { /* 離線時略過 */ }
     return true;
   },
 
-  // 教師後台用：移除單一成就
+  // 教師後台用：移除單一成就（arrayRemove 原子移除）
   async removeAchievement(studentId, achievementId) {
     const profile = await this.get(studentId);
-    const updated = (profile.achievements || []).filter(id => id !== achievementId);
-    this._cache[studentId] = { ...profile, achievements: updated };
     await setDoc(doc(db, "students", studentId),
-      { studentId, achievements: updated, updatedAt: serverTimestamp() }, { merge: true });
-    await updateDoc(doc(db, "leaderboard", studentId), { achievementCount: updated.length }).catch(() => {});
+      { studentId, achievements: arrayRemove(achievementId), updatedAt: serverTimestamp() }, { merge: true });
+    await this._syncAfterWrite(studentId, profile);
   },
 
-  // 教師後台用：一鍵全給 / 全清（直接覆蓋成就陣列）
+  // 重建用：一次原子加入多個成就（只加不減）
+  async addAchievements(studentId, ids) {
+    if (!ids || !ids.length) return;
+    const profile = await this.get(studentId);
+    await setDoc(doc(db, "students", studentId),
+      { studentId, achievements: arrayUnion(...ids), updatedAt: serverTimestamp() }, { merge: true });
+    return this._syncAfterWrite(studentId, profile);
+  },
+
+  // 教師後台用：一鍵全給 / 全清（明確操作，直接覆蓋成就陣列）
   async setAchievements(studentId, ids) {
     this._cache[studentId] = { ...(this._cache[studentId] || {}), achievements: ids };
     await setDoc(doc(db, "students", studentId),
@@ -705,5 +798,5 @@ const StudentStore = {
 
 export { db, ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore,
          ACHIEVEMENTS, calcScore, countWords, formatDate, validateStudentId,
-         showToast, escHtml };
+         deriveEarnedAchievements, showToast, escHtml };
 
