@@ -737,6 +737,21 @@ const StudentStore = {
     } catch { return { achievements: [], theme: null, fontSize: null }; }
   },
 
+  /** 取所有學生 profile（教師端成就檢查/登入紀錄用） */
+  async getAllProfiles() {
+    const snap = await getDocs(collection(db, "students"));
+    return snap.docs.map(d => ({ studentId: d.id, ...d.data() }));
+  },
+
+  /** 記錄一次登入（只寫 lastLogin，merge 不動其他欄位） */
+  async recordLogin(studentId) {
+    if (!studentId) return;
+    try {
+      await setDoc(doc(db, "students", studentId),
+        { studentId, lastLogin: serverTimestamp() }, { merge: true });
+    } catch { /* 離線時略過 */ }
+  },
+
   async savePreferences(studentId, prefs) {
     if (!studentId) return;
     this._cache[studentId] = { ...(this._cache[studentId] || {}), ...prefs };
