@@ -2,7 +2,8 @@
  * teacher.js — 教師後台邏輯（Firebase 版）
  */
 import { ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore, ACHIEVEMENTS,
-         countWords, formatDate, validateStudentId, showToast, escHtml } from "./data.js";
+         countWords, formatDate, validateStudentId, deriveEarnedAchievements,
+         showToast, escHtml } from "./data.js";
 
 const teacherState = { editingId: null, leaderboardCache: null, examArticles: null, achStudentId: null };
 const $ = id => document.getElementById(id);
@@ -68,6 +69,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("ach-student-id").addEventListener("keydown", e => { if (e.key === "Enter") queryStudentAchievements(); });
   $("btn-ach-all").addEventListener("click", () => bulkSetAchievements(ACHIEVEMENTS.map(a => a.id)));
   $("btn-ach-clear").addEventListener("click", () => bulkSetAchievements([]));
+  $("btn-ach-rebuild").addEventListener("click", rebuildAchievementsForQueried);
+  $("btn-ach-rebuild-all").addEventListener("click", rebuildAllAchievements);
 });
 
 // ── TAB SWITCHING ──────────────────────────────────────────
@@ -423,6 +426,50 @@ async function bulkSetAchievements(ids) {
   await StudentStore.setAchievements(id, ids);
   renderAchManage(id, new Set(ids));
   showToast(ids.length ? "已全部授予" : "已全部清除");
+}
+
+// 依某學生的練習/考試紀錄推導應得成就，用 arrayUnion 補回（只加不減）
+async function rebuildOneStudent(id) {
+  const [sessions, examResults] = await Promise.all([
+    RecordStore.getByStudent(id).catch(() => []),
+    ExamStore.getStudentExamResults(id).catch(() => []),
+  ]);
+  const earned = deriveEarnedAchievements(sessions, examResults);
+  await StudentStore.addAchievements(id, [...earned]);
+  return earned.size;
+}
+
+async function rebuildAchievementsForQueried() {
+  const id = teacherState.achStudentId;
+  if (!id) { showToast("請先查詢學生"); return; }
+  showToast("重建中…");
+  try {
+    const n = await rebuildOneStudent(id);
+    const profile = await StudentStore.get(id);
+    renderAchManage(id, new Set(profile.achievements || []));
+    showToast(`已依紀錄補回，推得 ${n} 個成就（現有成就未移除）`);
+  } catch (e) { showToast("重建失敗：" + e.message); }
+}
+
+async function rebuildAllAchievements() {
+  if (!confirm("將依練習/考試紀錄，為所有學生補回應得成就（只加不減）。確定執行？")) return;
+  const btn = $("btn-ach-rebuild-all");
+  btn.disabled = true;
+  try {
+    const ids = await RecordStore.getAllStudentIds();
+    let done = 0;
+    for (const sid of ids) {
+      try { await rebuildOneStudent(sid); } catch {}
+      done++;
+      btn.textContent = `重建中… ${done}/${ids.length}`;
+    }
+    showToast(`已重建 ${done} 位學生的成就`);
+  } catch (e) {
+    showToast("重建失敗：" + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "重建全部學生成就";
+  }
 }
 
 async function exportAllCSV() {
