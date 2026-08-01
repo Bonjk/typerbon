@@ -3,7 +3,7 @@
  */
 import { ArticleStore, RecordStore, ExamStore, StudentStore,
          ACHIEVEMENTS, calcScore, countWords, formatDate,
-         validateStudentId, showToast, escHtml } from "./data.js";
+         validateStudentId, showToast, escHtml } from "./data.js?v=20260801";
 
 // ── STATE ─────────────────────────────────────────────────
 const state = {

@@ -3,7 +3,7 @@
  */
 import { ArticleStore, RecordStore, ExamStore, TeacherAuth, StudentStore, ACHIEVEMENTS,
          countWords, formatDate, validateStudentId, deriveEarnedAchievements,
-         showToast, escHtml } from "./data.js";
+         showToast, escHtml } from "./data.js?v=20260801";
 
 const teacherState = { editingId: null, leaderboardCache: null, examArticles: null, achStudentId: null };
 const $ = id => document.getElementById(id);
